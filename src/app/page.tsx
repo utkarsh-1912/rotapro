@@ -61,7 +61,7 @@ export default function LandingPage() {
                   <p className="mt-4 text-lg text-muted-foreground">
                     RotaPro simplifies complex scheduling. Generate fair, optimized rotas, manage your team, and keep everyone in sync—effortlessly.
                   </p>
-                  <div className="mt-8 flex justify-start gap-4">
+                  <div className="mt-8 flex flex-col sm:flex-row justify-start gap-4">
                     <Button asChild size="lg">
                       <Link href="/signup">Get Started for Free</Link>
                     </Button>
