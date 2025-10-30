@@ -18,9 +18,9 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
         teamMembers: [],
         shifts: [
           { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'var(--chart-1)', sequence: 1, isExtreme: true, minTeam: 1, maxTeam: 10 },
-          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'var(--chart-2)', sequence: 2, isExtreme: false, minTeam: 1, maxTeam: 10 },
+          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'var(--chart-2)', sequence: 4, isExtreme: false, minTeam: 1, maxTeam: 10 },
           { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'var(--chart-3)', sequence: 3, isExtreme: true, minTeam: 1, maxTeam: 10 },
-          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'var(--chart-4)', sequence: 4, isExtreme: false, minTeam: 1, maxTeam: 10 }
+          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'var(--chart-4)', sequence: 2, isExtreme: false, minTeam: 1, maxTeam: 10 }
         ],
         generationHistory: [],
         activeGenerationId: null,
@@ -30,38 +30,46 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
 
 const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: RotaGeneration[]): ShiftStreak => {
     const streaks: ShiftStreak = {};
+    teamMembers.forEach(member => {
+        streaks[member.id] = { shiftId: null, count: 0 };
+    });
+
     if (generationHistory.length === 0) {
-        teamMembers.forEach(member => {
-            streaks[member.id] = { shiftId: null, count: 0 };
-        });
         return streaks;
     }
 
     const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
     
     for (const member of teamMembers) {
-        const mostRecentGeneration = sortedHistory[sortedHistory.length - 1];
-        const lastShiftId = mostRecentGeneration.assignments[member.id] || null;
+        let currentStreakCount = 0;
+        let lastShiftId: string | null = null;
 
-        if (!lastShiftId) {
-            streaks[member.id] = { shiftId: null, count: 0 };
-            continue;
-        }
-
-        let streakCount = 0;
+        // Iterate from most recent to oldest to find the current streak
         for (let i = sortedHistory.length - 1; i >= 0; i--) {
             const gen = sortedHistory[i];
-            if (gen.assignments[member.id] === lastShiftId) {
-                streakCount++;
+            const memberShiftInGen = gen.assignments[member.id];
+
+            if (i === sortedHistory.length - 1) { // Most recent generation
+                lastShiftId = memberShiftInGen || null;
+                if(lastShiftId) {
+                    currentStreakCount = 1;
+                } else {
+                    break; // No shift, no streak
+                }
             } else {
-                break; 
+                if (memberShiftInGen === lastShiftId) {
+                    currentStreakCount++;
+                } else {
+                    break; // Streak is broken
+                }
             }
         }
-        streaks[member.id] = { shiftId: lastShiftId, count: streakCount };
+        streaks[member.id] = { shiftId: lastShiftId, count: currentStreakCount };
     }
 
     return streaks;
 };
+
 
 export const useRotaStore = create<AppState>()(
   persist(
@@ -176,8 +184,9 @@ export const useRotaStore = create<AppState>()(
       generateNewRota: (startDate: Date) => {
         set(state => {
             const { teamMembers, shifts, generationHistory } = state;
+            const sortedShifts = [...shifts].sort((a,b) => a.sequence - b.sequence);
             
-            const totalMinRequired = shifts.reduce((acc, s) => acc + s.minTeam, 0);
+            const totalMinRequired = sortedShifts.reduce((acc, s) => acc + s.minTeam, 0);
             const flexibleMemberCount = teamMembers.filter(m => !m.fixedShiftId).length;
 
             if (flexibleMemberCount < totalMinRequired) {
@@ -201,9 +210,9 @@ export const useRotaStore = create<AppState>()(
 
             const shiftStreaks = calculateShiftStreaks(teamMembers, filteredHistory);
 
-            const initialAssignments = generateNewRotaAssignments(teamMembers, shifts, shiftStreaks);
+            const initialAssignments = generateNewRotaAssignments(teamMembers, sortedShifts, shiftStreaks);
             
-            const finalAssignments = balanceAssignments(initialAssignments, shifts, teamMembers, shiftStreaks);
+            const finalAssignments = balanceAssignments(initialAssignments, sortedShifts, teamMembers, shiftStreaks);
 
             const newGeneration: RotaGeneration = {
                 id: new Date().getTime().toString(),
@@ -211,6 +220,7 @@ export const useRotaStore = create<AppState>()(
                 assignments: finalAssignments,
                 teamMembersAtGeneration: [...teamMembers],
                 manualOverrides: [],
+                manualSwaps: [],
             };
 
             const newHistory = [...generationHistory, newGeneration];
@@ -242,8 +252,11 @@ export const useRotaStore = create<AppState>()(
                   const newOverrides = new Set(gen.manualOverrides || []);
                   newOverrides.add(memberId1);
                   newOverrides.add(memberId2);
+
+                  const newSwaps = [...(gen.manualSwaps || [])];
+                  newSwaps.push({ memberId1, memberId2 });
                   
-                  return {...gen, assignments: newAssignments, manualOverrides: Array.from(newOverrides)};
+                  return {...gen, assignments: newAssignments, manualOverrides: Array.from(newOverrides), manualSwaps: newSwaps};
               }
               return gen;
           });
@@ -300,3 +313,5 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     updateAssignmentsForGeneration: state.updateAssignmentsForGeneration,
     updateAssignment: state.updateAssignment,
 }));
+
+    

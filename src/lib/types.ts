@@ -22,6 +22,11 @@ export interface Shift {
 // Assignments map a team member's ID to a shift ID
 export type RotaAssignments = Record<string, string | undefined>;
 
+export type ManualSwap = {
+    memberId1: string;
+    memberId2: string;
+}
+
 // A single generated rota period
 export interface RotaGeneration {
   id: string; // Unique ID for this generation, e.g., a timestamp
@@ -29,6 +34,7 @@ export interface RotaGeneration {
   assignments: RotaAssignments;
   teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
   manualOverrides?: string[]; // Array of member IDs that have been manually changed
+  manualSwaps?: ManualSwap[]; // Array of swaps that occurred
 }
 
 // Tracks how many consecutive periods a member has had the same shift
@@ -68,3 +74,5 @@ export interface AuthState {
   setProfile: (profile: UserProfile | null) => void;
   setLoading: (loading: boolean) => void;
 }
+
+    

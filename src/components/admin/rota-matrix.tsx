@@ -8,12 +8,37 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO, addDays } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
-import { Recycle, Download } from "lucide-react";
+import { Recycle, Download, ArrowRightLeft } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { TeamMember } from "@/lib/types";
+import type { RotaGeneration, TeamMember } from "@/lib/types";
+import { Separator } from "../ui/separator";
+
+function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, any>, memberMap: Map<string, any>) {
+    if (!gen.manualSwaps || gen.manualSwaps.length === 0) {
+        return null;
+    }
+    const swap = gen.manualSwaps[0]; // Assuming one swap per generation for now
+    if (!swap) return null;
+
+    const member1 = memberMap.get(swap.memberId1);
+    const member2 = memberMap.get(swap.memberId2);
+    if (!member1 || !member2) return null;
+
+    // The shift recorded in assignments is their NEW shift
+    const shift1 = shiftMap.get(gen.assignments[swap.memberId1]);
+    const shift2 = shiftMap.get(gen.assignments[swap.memberId2]);
+
+    if (!shift1 || !shift2) return null;
+
+    return {
+        members: `${member1.name} & ${member2.name}`,
+        shifts: `${shift2.name} ↔ ${shift1.name}`, // Show original shifts
+    };
+}
+
 
 export function RotaMatrix() {
     const { generationHistory, shifts } = useRotaStore();
@@ -47,7 +72,15 @@ export function RotaMatrix() {
     );
 
     const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
+    const memberMap = React.useMemo(() => new Map(allHistoricalMembers.map(m => [m.id, m])), [allHistoricalMembers]);
     
+    const swapHistory = React.useMemo(() => 
+        sortedHistory
+            .map(gen => ({ gen, details: getSwapDetails(gen, shiftMap, memberMap) }))
+            .filter(item => item.details !== null),
+        [sortedHistory, shiftMap, memberMap]
+    );
+
     const handleExport = () => {
         if (generationHistory.length === 0) {
             toast({
@@ -127,7 +160,8 @@ export function RotaMatrix() {
                                         {paginatedHistory.map(gen => {
                                             const assignmentId = gen.assignments[member.id];
                                             const shift = assignmentId ? shiftMap.get(assignmentId) : null;
-                                            const isOverridden = gen.manualOverrides?.includes(member.id);
+                                            const isManuallyChanged = gen.manualOverrides?.includes(member.id);
+                                            const isSwapped = gen.manualSwaps?.some(s => s.memberId1 === member.id || s.memberId2 === member.id);
                                             
                                             const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? false;
 
@@ -150,13 +184,20 @@ export function RotaMatrix() {
                                                             }}
                                                         >
                                                             {shift.name}
-                                                            {isOverridden && (
+                                                            {isManuallyChanged && (
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
-                                                                        <Recycle className="h-3 w-3 ml-1.5 inline-block" />
+                                                                        <span className="ml-1.5 inline-block">
+                                                                            {isSwapped 
+                                                                                ? <ArrowRightLeft className="h-3 w-3" />
+                                                                                : <Recycle className="h-3 w-3" />
+                                                                            }
+                                                                        </span>
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
-                                                                        <p>Shift was manually changed</p>
+                                                                        <p>
+                                                                            {isSwapped ? "Shift was manually swapped" : "Shift was manually edited"}
+                                                                        </p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
                                                             )}
@@ -223,6 +264,43 @@ export function RotaMatrix() {
                     </CardFooter>
                 )}
             </Card>
+
+             {swapHistory.length > 0 && (
+                <Card className="mt-6">
+                    <CardHeader>
+                        <CardTitle>Manual Swap History</CardTitle>
+                        <CardDescription>
+                            A log of all manual shift swaps that have occurred.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Rota Period</TableHead>
+                                        <TableHead>Members Involved</TableHead>
+                                        <TableHead>Shifts Swapped</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {swapHistory.map(({ gen, details }) => (
+                                        <TableRow key={gen.id}>
+                                            <TableCell className="font-medium whitespace-nowrap">
+                                                {format(parseISO(gen.startDate), 'd MMM yyyy')}
+                                            </TableCell>
+                                            <TableCell>{details?.members}</TableCell>
+                                            <TableCell>{details?.shifts}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </TooltipProvider>
     )
 }
+
+    
