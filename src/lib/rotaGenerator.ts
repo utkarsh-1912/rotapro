@@ -54,29 +54,62 @@ export const generateNewRotaAssignments = (
     let count = assignedShiftCounts[shiftId] || 0;
     const membersToAssign: TeamMember[] = [];
     
-    // Fill minimum requirement
-    while(count < min && availableMembers.length > 0) {
-        const member = availableMembers.shift()!;
-        membersToAssign.push(member);
-        count++;
+    let membersToFill = min - count;
+    if (membersToFill < 0) membersToFill = 0;
+
+    const tempAvailable: TeamMember[] = [];
+
+    while (membersToFill > 0 && availableMembers.length > 0) {
+      const member = availableMembers.shift()!;
+      // APAC -> US constraint
+      if (shiftId === 'us' && shiftStreaks[member.id]?.shiftId === 'apac') {
+          tempAvailable.push(member);
+      } else {
+          membersToAssign.push(member);
+          membersToFill--;
+      }
+    }
+    
+    // Add back the members who were not eligible
+    availableMembers.unshift(...tempAvailable);
+    
+    // If we couldn't find enough eligible members
+    if (membersToFill > 0) {
+        // This is a fallback - grab from the temp list if we absolutely have to
+        while(membersToFill > 0 && tempAvailable.length > 0) {
+            membersToAssign.push(tempAvailable.shift()!);
+            membersToFill--;
+        }
     }
 
-    // Attempt to fill up to max
-    while(count < max && availableMembers.length > 0) {
-        // Simple random chance to add more members up to the max
+    count = (assignedShiftCounts[shiftId] || 0) + membersToAssign.length;
+
+    // Attempt to fill up to max (opportunistically)
+    let potentialAdds = max - count;
+    const membersToKeepForLater: TeamMember[] = [];
+    const opportunisticMembers: TeamMember[] = [];
+
+    while (potentialAdds > 0 && availableMembers.length > 0) {
+        const member = availableMembers.shift()!;
         if (Math.random() > 0.5) {
-            const member = availableMembers.shift()!;
-            membersToAssign.push(member);
-            count++;
+             if (shiftId === 'us' && shiftStreaks[member.id]?.shiftId === 'apac') {
+                membersToKeepForLater.push(member);
+             } else {
+                opportunisticMembers.push(member);
+                potentialAdds--;
+             }
         } else {
-            break;
+            membersToKeepForLater.push(member);
         }
     }
     
+    membersToAssign.push(...opportunisticMembers);
+    availableMembers.unshift(...membersToKeepForLater);
+
     membersToAssign.forEach(member => {
         assignments[member.id] = shiftId;
     });
-    assignedShiftCounts[shiftId] = count;
+    assignedShiftCounts[shiftId] = membersToAssign.length + (assignedShiftCounts[shiftId] || 0);
   };
   
   // Enforce constraints
@@ -85,7 +118,7 @@ export const generateNewRotaAssignments = (
   assignShift('emea', 1, 2);
 
   // Assign remaining members to LATE EMEA
-  availableMembers.forEach(member => {
+  shuffle(availableMembers).forEach(member => {
     assignments[member.id] = 'late_emea';
   });
 
