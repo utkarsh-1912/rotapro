@@ -31,8 +31,8 @@ export function RotaManager() {
   const handleClone = () => {
     cloneRota();
      toast({
-      title: "Rota Cloned",
-      description: "The next 14-day rota has been created based on the previous one.",
+      title: "Next Rota Created",
+      description: "The rota for the next 14-day period has been created by rotating team members.",
     });
   };
 
@@ -41,7 +41,7 @@ export function RotaManager() {
       <CardHeader>
         <CardTitle>Rota Management</CardTitle>
         <CardDescription>
-          Generate a new rota from scratch or clone the last rota for the upcoming period.
+          Generate a new rota from scratch or create the next rota by rotating team members.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row">
@@ -65,13 +65,13 @@ export function RotaManager() {
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="secondary"><Copy />Clone & Rotate Rota</Button>
+            <Button variant="secondary"><Copy />Create Next Rota</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will create the next 14-day rota by rotating team members from the current period. Any assignments in the upcoming period will be overwritten.
+                This will create the rota for the next 14-day period by rotating team members. Any manual changes in that future period will be overwritten.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

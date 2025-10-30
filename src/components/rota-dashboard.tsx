@@ -65,8 +65,8 @@ export function RotaDashboard() {
   const handleClone = () => {
     cloneRota();
      toast({
-      title: "Rota Cloned",
-      description: "The next 14-day rota has been created.",
+      title: "Next Rota Created",
+      description: "The rota for the next 14-day period has been created.",
     });
   };
 
@@ -85,7 +85,7 @@ export function RotaDashboard() {
             <h1 className="text-3xl font-bold tracking-tight">Current Rota</h1>
             {isMounted && startDate ? (
               <p className="text-muted-foreground">
-                  Showing shifts for {format(start, 'do MMMM')} - {format(end, 'do MMMM yyyy')}
+                  Showing shifts for {format(start, 'd MMM')} - {format(end, 'd MMM yyyy')}
               </p>
             ) : (
               <Skeleton className="h-5 w-80 mt-1" />
@@ -94,11 +94,11 @@ export function RotaDashboard() {
         <div className="flex gap-2 flex-wrap">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline"><Copy /> Clone Rota</Button>
+                <Button variant="outline"><Copy /> Create Next Rota</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Clone & Rotate Rota?</AlertDialogTitle>
+                  <AlertDialogTitle>Create Rota for Next Period?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will create the next 14-day rota by rotating team members from the current period.
                   </AlertDialogDescription>

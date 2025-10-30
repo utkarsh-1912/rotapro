@@ -24,6 +24,7 @@ const useStore = create<AppState>()(
       ],
       rota: {},
       startDate: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
+      previousRotations: {},
 
       addTeamMember: (name, fixedShiftId) =>
         set((state) => ({
@@ -78,9 +79,7 @@ const useStore = create<AppState>()(
           const member1 = state.teamMembers.find(m => m.id === memberId1);
           const member2 = state.teamMembers.find(m => m.id === memberId2);
 
-          // Prevent swapping if either member has a fixed shift
           if (member1?.fixedShiftId || member2?.fixedShiftId) {
-              // Optionally, show a toast notification here to inform the user
               console.warn("Cannot swap shifts for members with fixed assignments.");
               return state;
           }
@@ -94,7 +93,6 @@ const useStore = create<AppState>()(
             newRota[date][memberId1] = shift2;
             newRota[date][memberId2] = shift1;
 
-            // Clean up undefined assignments to avoid cluttering the state
             if (newRota[date][memberId1] === undefined) delete newRota[date][memberId1];
             if (newRota[date][memberId2] === undefined) delete newRota[date][memberId2];
             
@@ -109,7 +107,19 @@ const useStore = create<AppState>()(
           const { rota, teamMembers, startDate } = state;
           const { newRota, newStartDate } = generateNextRota(rota, teamMembers, startDate);
           
-          return { rota: { ...rota, ...newRota }, startDate: newStartDate };
+          const combinedRota = { ...rota, ...newRota };
+          
+          const today = new Date().toISOString().split('T')[0];
+          const firstDateOfNewRota = Object.keys(newRota).sort()[0];
+
+          // If the new rota starts in the future, we keep the old start date until we reach it.
+          // Otherwise, we update the view to show the new rota period.
+          const finalStartDate = today < firstDateOfNewRota! ? startDate : newStartDate;
+
+          return { 
+            rota: combinedRota, 
+            startDate: finalStartDate 
+          };
         });
       }
 
@@ -117,7 +127,6 @@ const useStore = create<AppState>()(
     {
       name: "rotapro-storage",
       storage: createJSONStorage(() => localStorage),
-       // This part is important for handling Date objects from JSON
       reviver: (key, value) => {
         if (key === 'startDate' && typeof value === 'string') {
           return new Date(value).toISOString();
@@ -128,38 +137,37 @@ const useStore = create<AppState>()(
   )
 );
 
-// Custom hook to handle client-side state hydration
 export const useRotaStore = <T>(selector: (state: AppState) => T): T => {
     const state = useStore(selector);
     const [hydrated, setHydrated] = React.useState(false);
+
     React.useEffect(() => {
       setHydrated(true);
-      // Automatically generate rota on first load if it's empty
-      const { rota, generateRota } = useStore.getState();
-      if (Object.keys(rota).length === 0) {
+      const { rota, generateRota, teamMembers } = useStore.getState();
+      if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
         generateRota();
       }
     }, []);
 
-    // On the server or before hydration, return a default state.
-    // This prevents hydration mismatches.
     if (!hydrated) {
         if (selector.toString().includes('startDate')) {
-            // Special handling for startDate to avoid server/client mismatch
             return startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString() as T;
         }
         const initialState = useStore.getState();
-        const initialValue = selector(initialState);
-        // For arrays, return empty array to prevent rendering server-data on client
-        if (Array.isArray(initialValue)) return [] as T;
-
-        return initialValue;
+        try {
+            const initialValue = selector(initialState);
+             if (Array.isArray(initialValue)) return [] as T;
+             if (typeof initialValue === 'object' && initialValue !== null && Object.keys(initialValue).length === 0) return {} as T;
+            return initialValue;
+        } catch (e) {
+            // Fallback for complex selectors on initial load
+        }
+        return {} as T;
     }
     
     return state;
 }
 
-// This part is for actions that don't need to be reactive and can be called anywhere
 export const useRotaStoreActions = () => useStore(state => ({
     addTeamMember: state.addTeamMember,
     updateTeamMember: state.updateTeamMember,
