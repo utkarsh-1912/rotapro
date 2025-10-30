@@ -4,7 +4,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format, startOfWeek, addDays, areIntervalsOverlapping, parseISO } from 'date-fns';
+import { format, startOfWeek, addDays, areIntervalsOverlapping, parseISO, isPast } from 'date-fns';
 import { useRotaStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { isMonday } from 'date-fns';
@@ -56,7 +56,11 @@ export function RotaGenerationDialog({ open, onOpenChange }: { open: boolean, on
                 const nextStartDate = addDays(lastStartDate, 14);
                 setDate(startOfWeek(nextStartDate, { weekStartsOn: 1 }));
             } else {
-                setDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+                let nextMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
+                if (isPast(nextMonday)) {
+                  nextMonday = addDays(nextMonday, 7);
+                }
+                setDate(nextMonday);
             }
         }
     }, [open, generationHistory]);
