@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -12,8 +13,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarTrigger,
   SidebarFooter,
+  SidebarClose
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Shield, Moon, Sun, LogOut } from "lucide-react";
@@ -59,7 +60,7 @@ function ThemeToggle() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, profile } = useAuthStore();
+  const { user } = useAuthStore();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -84,13 +85,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
-                <Logo />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
+                  <Logo />
+              </div>
+              <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+                  <span className="text-lg font-semibold">RotaPro</span>
+              </div>
             </div>
-            <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <span className="text-lg font-semibold">RotaPro</span>
-            </div>
+            <SidebarClose />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -103,7 +107,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Link href="/dashboard">
                   <LayoutDashboard />
-                  <span className="group-data-[collapsible=icon]:hidden">Dashboard</span>
+                  <span>Dashboard</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -115,7 +119,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Link href="/admin">
                   <Shield />
-                  <span className="group-data-[collapsible=icon]:hidden">Admin Panel</span>
+                  <span>Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -155,7 +159,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-background/50 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
-            <SidebarTrigger />
             <div className="w-full flex-1">
                 {/* Can add breadcrumbs or page title here */}
             </div>
