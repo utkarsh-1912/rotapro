@@ -18,7 +18,7 @@ export default function ContactPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const recipientEmail = "contact@rotapro.com";
+    const recipientEmail = "go.fixpert@gmail.com";
     const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(
       subject
     )}&body=${encodeURIComponent(

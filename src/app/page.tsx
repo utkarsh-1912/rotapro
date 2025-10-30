@@ -52,7 +52,7 @@ export default function LandingPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const recipientEmail = "contact@rotapro.com";
+    const recipientEmail = "go.fixpert@gmail.com";
     const subject = "Message from RotaPro Landing Page";
     const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(
       subject
