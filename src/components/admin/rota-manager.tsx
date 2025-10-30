@@ -4,14 +4,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format, startOfWeek, addDays, areIntervalsOverlapping } from 'date-fns';
+import { format, startOfWeek, addDays, areIntervalsOverlapping, parseISO } from 'date-fns';
 import { useRotaStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { isMonday } from 'date-fns';
 
 export function RotaGenerationDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
     const { generationHistory, generateNewRota } = useRotaStore();
-    const [date, setDate] = React.useState<Date | undefined>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    const [date, setDate] = React.useState<Date | undefined>();
     const { toast } = useToast();
 
     const handleGenerate = () => {
@@ -50,9 +50,16 @@ export function RotaGenerationDialog({ open, onOpenChange }: { open: boolean, on
     
     React.useEffect(() => {
         if (open) {
-            setDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+            if (generationHistory.length > 0) {
+                const latestGeneration = [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime())[0];
+                const lastStartDate = parseISO(latestGeneration.startDate);
+                const nextStartDate = addDays(lastStartDate, 14);
+                setDate(startOfWeek(nextStartDate, { weekStartsOn: 1 }));
+            } else {
+                setDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+            }
         }
-    }, [open]);
+    }, [open, generationHistory]);
 
     return (
         <>
