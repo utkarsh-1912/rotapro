@@ -7,6 +7,10 @@ import { motion } from "framer-motion";
 import { CalendarCheck, Settings, Users } from "lucide-react";
 import Image from "next/image";
 import { AppLayout } from "@/components/app-layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 
 export default function LandingPage() {
@@ -111,6 +115,41 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <section id="contact" className="py-20 md:py-32">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto">
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="text-3xl font-extrabold tracking-tight">Get in Touch</CardTitle>
+                  <CardDescription>Have a question or feedback? We'd love to hear from you.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="name-landing">Name</Label>
+                        <Input id="name-landing" placeholder="Your Name" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email-landing">Email</Label>
+                        <Input id="email-landing" type="email" placeholder="you@example.com" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="message-landing">Message</Label>
+                      <Textarea id="message-landing" placeholder="Your message here..." rows={5} />
+                    </div>
+                    <div className="text-center pt-2">
+                      <Button type="submit" size="lg">Send Message</Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
       </main>
     </AppLayout>
   );
