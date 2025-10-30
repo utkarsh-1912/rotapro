@@ -26,18 +26,6 @@ export function RotaMatrix() {
     );
 
     const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
-
-    const getShiftColor = (colorName: string | undefined) => {
-        if (!colorName) return 'hsl(var(--muted))';
-        const colorMap: { [key: string]: string } = {
-            'bg-blue-200': 'hsl(210 100% 85%)',
-            'bg-amber-200': 'hsl(40 96% 78%)',
-            'bg-indigo-200': 'hsl(231 89% 82%)',
-            'bg-emerald-200': 'hsl(145 63% 79%)',
-            'bg-rose-200': 'hsl(347 90% 81%)',
-        };
-        return colorMap[colorName] || 'hsl(var(--muted))';
-    }
     
     return (
         <Card>
@@ -84,7 +72,10 @@ export function RotaMatrix() {
                                                 {shift ? (
                                                     <Badge
                                                         variant="secondary"
-                                                        style={{ backgroundColor: getShiftColor(shift.color) }}
+                                                        style={{ 
+                                                            backgroundColor: `hsl(${shift.color})`,
+                                                            color: 'hsl(var(--primary-foreground))' 
+                                                        }}
                                                     >
                                                         {shift.name}
                                                     </Badge>

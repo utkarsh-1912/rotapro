@@ -6,23 +6,21 @@ import { generateNewRotaAssignments } from "./rotaGenerator";
 import { toast } from "@/hooks/use-toast";
 
 const SHIFT_COLORS = [
-    'bg-blue-200',
-    'bg-amber-200',
-    'bg-indigo-200',
-    'bg-emerald-200',
-    'bg-rose-200',
-    'bg-pink-200',
-    'bg-purple-200',
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
 ];
 
 const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreActions>> => {
     return {
         teamMembers: [],
         shifts: [
-          { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'bg-blue-200', sequence: 1, isExtreme: true, minTeam: 1, maxTeam: 10 },
-          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'bg-amber-200', sequence: 2, isExtreme: false, minTeam: 1, maxTeam: 10 },
-          { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'bg-indigo-200', sequence: 3, isExtreme: true, minTeam: 1, maxTeam: 10 },
-          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'bg-emerald-200', sequence: 4, isExtreme: false, minTeam: 1, maxTeam: 10 }
+          { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'var(--chart-1)', sequence: 1, isExtreme: true, minTeam: 1, maxTeam: 10 },
+          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'var(--chart-2)', sequence: 2, isExtreme: false, minTeam: 1, maxTeam: 10 },
+          { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'var(--chart-3)', sequence: 3, isExtreme: true, minTeam: 1, maxTeam: 10 },
+          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'var(--chart-4)', sequence: 4, isExtreme: false, minTeam: 1, maxTeam: 10 }
         ],
         generationHistory: [],
         activeGenerationId: null,
