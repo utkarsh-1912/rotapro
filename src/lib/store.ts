@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, ShiftStreak, TeamMember } from "./types";
-import { startOfWeek, formatISO } from "date-fns";
+import { startOfWeek, formatISO, parseISO } from "date-fns";
 import { generateNewRotaAssignments } from "./rotaGenerator";
 
 const getInitialState = () => {
@@ -28,32 +28,36 @@ const getInitialState = () => {
 
 const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: RotaGeneration[]): ShiftStreak => {
     const streaks: ShiftStreak = {};
+    // Initialize streaks for all members
     teamMembers.forEach(member => {
         streaks[member.id] = { shiftId: null, count: 0 };
     });
 
-    const sortedHistory = [...generationHistory].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+    // Sort history from most recent to oldest
+    const sortedHistory = [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
+    
+    if (sortedHistory.length === 0) {
+        return streaks;
+    }
 
     for (const member of teamMembers) {
-        let currentStreak = 0;
-        let lastShiftId: string | null = null;
+        const lastGenAssignment = sortedHistory[0].assignments[member.id];
+        if (!lastGenAssignment) {
+            streaks[member.id] = { shiftId: null, count: 0 };
+            continue;
+        }
+
+        let streakCount = 0;
         for (const generation of sortedHistory) {
-            const shiftId = generation.assignments[member.id];
-            if (shiftId) {
-                if (lastShiftId === null) {
-                    lastShiftId = shiftId;
-                    currentStreak = 1;
-                } else if (lastShiftId === shiftId) {
-                    currentStreak++;
-                } else {
-                    break; 
-                }
+            if (generation.assignments[member.id] === lastGenAssignment) {
+                streakCount++;
             } else {
-                break;
+                break; // Streak is broken
             }
         }
-        streaks[member.id] = { shiftId: lastShiftId, count: currentStreak };
+        streaks[member.id] = { shiftId: lastGenAssignment, count: streakCount };
     }
+
     return streaks;
 };
 
@@ -153,7 +157,7 @@ export const useRotaStore = create<AppState>()(
             const newHistory = state.generationHistory.filter(g => g.id !== generationId);
             let newActiveId = state.activeGenerationId;
             if (state.activeGenerationId === generationId) {
-                newActiveId = newHistory.length > 0 ? [...newHistory].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0].id : null;
+                newActiveId = newHistory.length > 0 ? [...newHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime())[0].id : null;
             }
             return {
                 generationHistory: newHistory,
@@ -174,7 +178,7 @@ export const useRotaStore = create<AppState>()(
         if (state) {
             if (!state.activeGenerationId && state.generationHistory.length > 0) {
               // If activeGenerationId is somehow null but history exists, set it to the latest.
-              const sortedHistory = [...state.generationHistory].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+              const sortedHistory = [...state.generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
               state.activeGenerationId = sortedHistory[0].id;
             }
         }
