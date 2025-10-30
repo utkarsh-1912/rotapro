@@ -151,7 +151,7 @@ function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean)
                         control={form.control}
                         name="isExtreme"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                            <FormItem className="flex flex-row items-center gap-2 space-y-0 pt-6">
                                <FormControl>
                                     <Checkbox
                                     id="isExtreme"
