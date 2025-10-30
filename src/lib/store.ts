@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember } from "./types";
 import { startOfWeek, formatISO, parseISO } from "date-fns";
-import { generateNewRotaAssignments } from "./rotaGenerator";
+import { generateNewRotaAssignments, balanceAssignments } from "./rotaGenerator";
 import { toast } from "@/hooks/use-toast";
 
 const SHIFT_COLORS = [
@@ -186,6 +186,18 @@ export const useRotaStore = create<AppState>()(
         set(state => {
             let { teamMembers, shifts, generationHistory } = state;
             
+            const totalMinRequired = shifts.reduce((acc, s) => acc + s.minTeam, 0);
+            const flexibleMemberCount = teamMembers.filter(m => !m.fixedShiftId).length;
+
+            if (flexibleMemberCount < totalMinRequired) {
+                toast({
+                    variant: "destructive",
+                    title: "Staffing Warning",
+                    description: `The number of flexible team members (${flexibleMemberCount}) is less than the total minimum required (${totalMinRequired}). The generated rota may not meet all constraints.`,
+                    duration: 5000,
+                });
+            }
+
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
 
             const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
@@ -201,12 +213,14 @@ export const useRotaStore = create<AppState>()(
 
             const shiftStreaks = calculateShiftStreaks(teamMembers, generationHistory);
 
-            const newAssignments = generateNewRotaAssignments(teamMembers, shifts, shiftStreaks);
+            const initialAssignments = generateNewRotaAssignments(teamMembers, shifts, shiftStreaks);
             
+            const finalAssignments = balanceAssignments(initialAssignments, shifts, teamMembers, shiftStreaks);
+
             const newGeneration: RotaGeneration = {
                 id: new Date().getTime().toString(),
                 startDate: formatISO(newStartDate),
-                assignments: newAssignments,
+                assignments: finalAssignments,
                 teamMembersAtGeneration: [...teamMembers],
                 manualOverrides: [],
             };

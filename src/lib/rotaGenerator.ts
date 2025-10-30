@@ -109,7 +109,8 @@ export const generateNewRotaAssignments = (
       let assigned = false;
       for (let i = 0; i < unassignedMembers.length; i++) {
         const member = unassignedMembers[i];
-        const lastShift = shiftMap.get(member.lastShiftId || '');
+        const lastShiftId = shiftStreaks[member.id]?.shiftId;
+        const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
         if (isTransitionAllowed(lastShift, shift)) {
           assignments[member.id] = shift.id;
           assignedCounts[shift.id]++;
@@ -126,7 +127,8 @@ export const generateNewRotaAssignments = (
 
   // 5. Assign any remaining unassigned members to any shift with capacity
   shuffle(unassignedMembers).forEach(member => {
-    const lastShift = shiftMap.get(member.lastShiftId || '');
+    const lastShiftId = shiftStreaks[member.id]?.shiftId;
+    const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
     let assigned = false;
     for (const shift of sortedShifts) {
         if (assignedCounts[shift.id] < shift.maxTeam && isTransitionAllowed(lastShift, shift)) {
@@ -162,4 +164,74 @@ export const generateNewRotaAssignments = (
   });
 
   return assignments;
+};
+
+
+export const balanceAssignments = (
+    assignments: RotaAssignments,
+    shifts: Shift[],
+    teamMembers: TeamMember[],
+    shiftStreaks: ShiftStreak
+): RotaAssignments => {
+    const shiftMap = new Map(shifts.map(s => [s.id, s]));
+    const memberMap = new Map(teamMembers.map(m => [m.id, m]));
+    const balancedAssignments = { ...assignments };
+
+    const calculateCounts = () => {
+        const counts: Record<string, string[]> = {};
+        shifts.forEach(s => counts[s.id] = []);
+        for (const memberId in balancedAssignments) {
+            const shiftId = balancedAssignments[memberId];
+            if (shiftId && counts[shiftId]) {
+                counts[shiftId].push(memberId);
+            }
+        }
+        return counts;
+    };
+
+    let shiftCounts = calculateCounts();
+
+    const understaffedShifts = shifts.filter(s => shiftCounts[s.id].length < s.minTeam);
+    const overstaffedShifts = shifts.filter(s => shiftCounts[s.id].length > s.minTeam);
+
+    for (const understaffedShift of understaffedShifts) {
+        const needed = understaffedShift.minTeam - shiftCounts[understaffedShift.id].length;
+        
+        for (let i = 0; i < needed; i++) {
+            let moved = false;
+            // Try to find a member from an overstaffed shift who can move
+            for (const overstaffedShift of overstaffedShifts) {
+                if (shiftCounts[overstaffedShift.id].length <= overstaffedShift.minTeam) continue;
+
+                const potentialMovers = shiftCounts[overstaffedShift.id]
+                    .filter(memberId => memberMap.get(memberId)?.fixedShiftId !== understaffedShift.id);
+
+                // Find a mover who satisfies transition rules
+                let moverId = potentialMovers.find(memberId => {
+                    const lastShiftId = shiftStreaks[memberId]?.shiftId;
+                    const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+                    return isTransitionAllowed(lastShift, understaffedShift);
+                });
+
+                // If no ideal mover, take the first available one from the overstaffed shift
+                if (!moverId && potentialMovers.length > 0) {
+                    moverId = potentialMovers[0];
+                }
+
+                if (moverId) {
+                    // Move the member
+                    balancedAssignments[moverId] = understaffedShift.id;
+                    // Recalculate counts after the move
+                    shiftCounts = calculateCounts();
+                    moved = true;
+                    break; // Move to the next needed member
+                }
+            }
+            if (!moved) {
+                console.warn(`Could not find a member to move to understaffed shift: ${understaffedShift.name}`);
+            }
+        }
+    }
+
+    return balancedAssignments;
 };
