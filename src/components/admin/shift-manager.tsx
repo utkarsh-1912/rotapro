@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -150,19 +151,17 @@ function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean)
                         control={form.control}
                         name="isExtreme"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
                                <FormControl>
                                     <Checkbox
+                                    id="isExtreme"
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
                                     />
                                 </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel>
-                                        Extreme Shift
-                                    </FormLabel>
-                                    <FormMessage />
-                                </div>
+                                <FormLabel htmlFor="isExtreme" className="font-normal">
+                                    Extreme Shift
+                                </FormLabel>
                             </FormItem>
                         )}
                     />
