@@ -13,8 +13,9 @@ import { ArrowRightLeft, Download, Plus, FileText, Image as ImageIcon } from "lu
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { RotaGenerationDialog } from "./admin/rota-manager";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "./ui/dialog";
 import { toPng } from 'html-to-image';
+import { RotaExportImage } from "./rota-export-image";
 
 export function RotaDashboard() {
   const { generationHistory, activeGenerationId, teamMembers, shifts } = useRotaStore();
@@ -28,6 +29,8 @@ export function RotaDashboard() {
   , [generationHistory, activeGenerationId]);
 
   const rotaTableRef = React.useRef<HTMLDivElement>(null);
+  const exportImageRef = React.useRef<HTMLDivElement>(null);
+
 
   const handleExport = async (formatType: 'csv' | 'png') => {
     if (!activeGeneration) return;
@@ -57,7 +60,7 @@ export function RotaDashboard() {
             description: "Your rota has been downloaded as a CSV file.",
         });
     } else if (formatType === 'png') {
-        if (rotaTableRef.current) {
+        if (exportImageRef.current) {
             try {
                 // Fetch the Google Fonts CSS manually
                 const fontCssResponse = await fetch(
@@ -65,10 +68,12 @@ export function RotaDashboard() {
                 );
                 const fontCss = await fontCssResponse.text();
 
-                const dataUrl = await toPng(rotaTableRef.current, { 
+                const dataUrl = await toPng(exportImageRef.current, { 
                     cacheBust: true, 
                     pixelRatio: 2,
                     fontEmbedCSS: fontCss,
+                    // Use a white background for the image
+                    backgroundColor: 'white',
                 });
                 
                 const link = document.createElement('a');
@@ -135,6 +140,11 @@ export function RotaDashboard() {
                         Export as Image
                     </Button>
                   </div>
+                   {activeGeneration && (
+                    <div className="absolute -left-[9999px] top-0">
+                        <RotaExportImage ref={exportImageRef} activeGeneration={activeGeneration} />
+                    </div>
+                   )}
                 </DialogContent>
               </Dialog>
               <Dialog open={isGenerateDialogOpen} onOpenChange={setGenerateDialogOpen}>
