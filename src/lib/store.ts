@@ -17,7 +17,12 @@ const SHIFT_COLORS = [
 const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreActions>> => {
     return {
         teamMembers: [],
-        shifts: [],
+        shifts: [
+          { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'bg-blue-200' },
+          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'bg-amber-200' },
+          { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'bg-indigo-200' },
+          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'bg-emerald-200' }
+        ],
         generationHistory: [],
         activeGenerationId: null,
     }
@@ -80,17 +85,9 @@ export const useRotaStore = create<AppState>()(
         })),
 
       deleteTeamMember: (id) =>
-        set((state) => {
-            const newHistory = state.generationHistory.map(gen => {
-                const newAssignments = {...gen.assignments};
-                delete newAssignments[id];
-                return {...gen, assignments: newAssignments};
-            });
-            return {
-                teamMembers: state.teamMembers.filter((member) => member.id !== id),
-                generationHistory: newHistory,
-            };
-        }),
+        set((state) => ({
+          teamMembers: state.teamMembers.filter((member) => member.id !== id),
+        })),
       
       addShift: (newShiftData) =>
         set((state) => {
@@ -126,7 +123,8 @@ export const useRotaStore = create<AppState>()(
             const newGeneration: RotaGeneration = {
                 id: new Date().getTime().toString(),
                 startDate: formatISO(newStartDate),
-                assignments: newAssignments
+                assignments: newAssignments,
+                teamMembersAtGeneration: [...teamMembers] // Preserve state of team
             };
 
             const newHistory = [...generationHistory, newGeneration];

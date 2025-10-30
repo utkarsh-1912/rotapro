@@ -22,6 +22,7 @@ export interface RotaGeneration {
   id: string; // Unique ID for this generation, e.g., a timestamp
   startDate: string; // ISO string for the start of this period
   assignments: RotaAssignments;
+  teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
 }
 
 // Tracks how many consecutive periods a member has had the same shift
