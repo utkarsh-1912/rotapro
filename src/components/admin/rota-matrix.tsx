@@ -5,7 +5,7 @@ import React from "react";
 import { useRotaStore } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO, addDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
 import { Recycle, Download, ArrowRightLeft } from "lucide-react";
@@ -93,7 +93,7 @@ export function RotaMatrix() {
 
         const header = ["Member", ...sortedHistory.map(gen => {
             const startDate = parseISO(gen.startDate);
-            const endDate = addDays(startDate, 13);
+            const endDate = parseISO(gen.endDate);
             return `${format(startDate, 'd MMM')} - ${format(endDate, 'd MMM yyyy')}`;
         })];
 
@@ -144,7 +144,7 @@ export function RotaMatrix() {
                                     <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
                                     {paginatedHistory.map(gen => {
                                         const startDate = parseISO(gen.startDate);
-                                        const endDate = addDays(startDate, 13);
+                                        const endDate = parseISO(gen.endDate);
                                         return (
                                             <TableHead key={gen.id} className="text-center font-semibold whitespace-nowrap">
                                                 {format(startDate, 'd')} - {format(endDate, 'd MMM yyyy')}
@@ -286,7 +286,7 @@ export function RotaMatrix() {
                                 <TableBody>
                                     {swapHistory.map(({ gen, details }) => {
                                         const startDate = parseISO(gen.startDate);
-                                        const endDate = addDays(startDate, 13);
+                                        const endDate = parseISO(gen.endDate);
                                         return (
                                             <TableRow key={gen.id}>
                                                 <TableCell className="font-medium whitespace-nowrap">

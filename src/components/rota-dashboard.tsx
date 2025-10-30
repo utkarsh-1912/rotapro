@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { addDays, format, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useRotaStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { RotaTable } from "@/components/rota-table";
@@ -99,8 +99,9 @@ export function RotaDashboard() {
   };
 
   const startDate = activeGeneration?.startDate;
+  const endDate = activeGeneration?.endDate;
   const start = startDate ? parseISO(startDate) : new Date();
-  const end = startDate ? addDays(start, 4) : new Date();
+  const end = endDate ? parseISO(endDate) : new Date();
 
   return (
     <Card>

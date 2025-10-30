@@ -31,6 +31,7 @@ export type ManualSwap = {
 export interface RotaGeneration {
   id: string; // Unique ID for this generation, e.g., a timestamp
   startDate: string; // ISO string for the start of this period
+  endDate: string; // ISO string for the end of this period
   assignments: RotaAssignments;
   teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
   manualOverrides?: string[]; // Array of member IDs that have been manually changed
@@ -52,7 +53,7 @@ export interface AppState {
   updateShift: (id: string, newShift: Partial<Omit<Shift, 'id' | 'color'>>) => void;
   deleteShift: (id: string) => void;
   updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments) => void;
-  generateNewRota: (startDate: Date) => void;
+  generateNewRota: (startDate: Date, rotaPeriodInWeeks: number) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;

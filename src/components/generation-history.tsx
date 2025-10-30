@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { format, parseISO, addDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function GenerationHistory() {
                         {sortedHistory.length > 0 ? sortedHistory.map((gen) => {
                             const isActive = gen.id === activeGenerationId;
                             const startDate = parseISO(gen.startDate);
-                            const endDate = addDays(startDate, 13);
+                            const endDate = parseISO(gen.endDate);
                             return (
                                 <div
                                     key={gen.id}

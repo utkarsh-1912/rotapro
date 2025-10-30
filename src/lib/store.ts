@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember } from "./types";
-import { startOfWeek, formatISO, parseISO } from "date-fns";
+import { startOfWeek, formatISO, parseISO, addDays } from "date-fns";
 import { generateNewRotaAssignments, balanceAssignments } from "./rotaGenerator";
 import { toast } from "@/hooks/use-toast";
 
@@ -181,7 +181,7 @@ export const useRotaStore = create<AppState>()(
         });
       },
 
-      generateNewRota: (startDate: Date) => {
+      generateNewRota: (startDate: Date, rotaPeriodInWeeks: number = 2) => {
         set(state => {
             const { teamMembers, shifts, generationHistory } = state;
             const sortedShifts = [...shifts].sort((a,b) => a.sequence - b.sequence);
@@ -199,6 +199,8 @@ export const useRotaStore = create<AppState>()(
             }
 
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
+            const periodInDays = rotaPeriodInWeeks * 7;
+            const newEndDate = addDays(newStartDate, periodInDays - 1);
 
             const currentMemberIds = new Set(teamMembers.map(m => m.id));
             const filteredHistory = generationHistory.map(gen => ({
@@ -217,6 +219,7 @@ export const useRotaStore = create<AppState>()(
             const newGeneration: RotaGeneration = {
                 id: new Date().getTime().toString(),
                 startDate: formatISO(newStartDate),
+                endDate: formatISO(newEndDate),
                 assignments: finalAssignments,
                 teamMembersAtGeneration: [...teamMembers],
                 manualOverrides: [],
@@ -289,6 +292,17 @@ export const useRotaStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
        onRehydrateStorage: () => (state) => {
         if (state) {
+            // On hydration, ensure endDates exist for old data
+            let needsUpdate = false;
+            state.generationHistory.forEach(gen => {
+                if (!gen.endDate) {
+                    needsUpdate = true;
+                    const startDate = parseISO(gen.startDate);
+                    // Assume old rotas were 2 weeks
+                    gen.endDate = formatISO(addDays(startDate, 13));
+                }
+            });
+
             if (!state.activeGenerationId && state.generationHistory.length > 0) {
               const sortedHistory = [...state.generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
               state.activeGenerationId = sortedHistory[0].id;
