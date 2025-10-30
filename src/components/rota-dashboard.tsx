@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -28,7 +29,7 @@ export function RotaDashboard() {
 
   const rotaTableRef = React.useRef<HTMLDivElement>(null);
 
-  const handleExport = (formatType: 'csv' | 'png') => {
+  const handleExport = async (formatType: 'csv' | 'png') => {
     if (!activeGeneration) return;
 
     const startDate = parseISO(activeGeneration.startDate);
@@ -57,25 +58,35 @@ export function RotaDashboard() {
         });
     } else if (formatType === 'png') {
         if (rotaTableRef.current) {
-            toPng(rotaTableRef.current, { cacheBust: true, pixelRatio: 2 })
-                .then((dataUrl) => {
-                    const link = document.createElement('a');
-                    link.download = `${filename}.png`;
-                    link.href = dataUrl;
-                    link.click();
-                    toast({
-                        title: "Export Successful",
-                        description: "Your rota has been downloaded as a PNG image.",
-                    });
-                })
-                .catch((err) => {
-                    console.error(err);
-                    toast({
-                        variant: "destructive",
-                        title: "Export Failed",
-                        description: "Could not generate image.",
-                    });
+            try {
+                // Fetch the Google Fonts CSS manually
+                const fontCssResponse = await fetch(
+                    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+                );
+                const fontCss = await fontCssResponse.text();
+
+                const dataUrl = await toPng(rotaTableRef.current, { 
+                    cacheBust: true, 
+                    pixelRatio: 2,
+                    fontEmbedCSS: fontCss,
                 });
+                
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = dataUrl;
+                link.click();
+                toast({
+                    title: "Export Successful",
+                    description: "Your rota has been downloaded as a PNG image.",
+                });
+            } catch (err) {
+                console.error(err);
+                toast({
+                    variant: "destructive",
+                    title: "Export Failed",
+                    description: "Could not generate image.",
+                });
+            }
         }
     }
 
