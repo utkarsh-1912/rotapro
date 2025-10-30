@@ -4,18 +4,32 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format, startOfWeek } from 'date-fns';
-import { useRotaStoreActions } from '@/lib/store';
+import { format, startOfWeek, isSameDay } from 'date-fns';
+import { useRotaStore, useRotaStoreActions } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { isMonday } from 'date-fns';
 
 export function RotaGenerationDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
     const [date, setDate] = React.useState<Date | undefined>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    const { generationHistory } = useRotaStore();
     const { generateNewRota } = useRotaStoreActions();
     const { toast } = useToast();
 
     const handleGenerate = () => {
         if (date) {
+            const weekAlreadyExists = generationHistory.some(gen => 
+                isSameDay(new Date(gen.startDate), date)
+            );
+
+            if (weekAlreadyExists) {
+                toast({
+                    variant: "destructive",
+                    title: "Generation Failed",
+                    description: "A rota for this week already exists. Please select a different date.",
+                });
+                return;
+            }
+
             generateNewRota(date);
             toast({
                 title: "New Rota Generated",
