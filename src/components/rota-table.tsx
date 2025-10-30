@@ -3,7 +3,7 @@
 import React from "react";
 import { useRotaStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "./ui/skeleton";
 
