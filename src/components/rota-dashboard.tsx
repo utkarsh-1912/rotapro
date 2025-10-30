@@ -37,23 +37,24 @@ export function RotaDashboard() {
   React.useEffect(() => setIsMounted(true), []);
 
   const handleExport = () => {
-    if (!startDate) return;
+    if (!isMounted || !startDate) return;
     const csvData: (string | number)[][] = [];
-    const headers = ["Date", ...teamMembers.map((m) => m.name)];
+    
+    // Header
+    const headers = ["Member", "Shift"];
     csvData.push(headers);
 
     const shiftMap = new Map(shifts.map(s => [s.id, s.name]));
+    const firstDate = Object.keys(rota).sort()[0];
+    if(!firstDate) return;
 
-    for (let i = 0; i < 14; i++) {
-      const date = addDays(parseISO(startDate), i);
-      const dateString = format(date, "yyyy-MM-dd");
-      const row = [format(date, "EEE, MMM d")];
-      teamMembers.forEach((member) => {
-        const shiftId = rota[dateString]?.[member.id];
-        row.push(shiftId ? shiftMap.get(shiftId) || "Unknown" : "Off");
-      });
-      csvData.push(row);
-    }
+    const assignmentsForPeriod = rota[firstDate] || {};
+
+    teamMembers.forEach((member) => {
+      const shiftId = assignmentsForPeriod[member.id];
+      const shiftName = shiftId ? shiftMap.get(shiftId) || "Off" : "Off";
+      csvData.push([member.name, shiftName]);
+    });
     
     downloadCsv(csvData, `rota-${format(parseISO(startDate), "yyyy-MM-dd")}.csv`);
     toast({
@@ -66,7 +67,7 @@ export function RotaDashboard() {
     cloneRota();
      toast({
       title: "Next Rota Created",
-      description: "The rota for the next 14-day period has been created.",
+      description: "A new rota for the next 14-day period has been generated.",
     });
   };
 
@@ -98,9 +99,9 @@ export function RotaDashboard() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Create Rota for Next Period?</AlertDialogTitle>
+                  <AlertDialogTitle>Generate Rota for Next Period?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will create the next 14-day rota by rotating team members from the current period.
+                    This will create a new random rota for the next 14-day period.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -85,26 +85,21 @@ const useStore = create<AppState>()(
             return state;
           }
       
-          // Iterate over the 14 days of the current rota period
-          for (let i = 0; i < 14; i++) {
-            const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
-      
-            if (newRota[date]) {
-              const shift1 = newRota[date][memberId1];
-              const shift2 = newRota[date][memberId2];
-      
-              // Perform the swap for the day
-              if (shift2 !== undefined) {
-                newRota[date][memberId1] = shift2;
-              } else {
-                delete newRota[date][memberId1];
-              }
-      
-              if (shift1 !== undefined) {
-                newRota[date][memberId2] = shift1;
-              } else {
-                delete newRota[date][memberId2];
-              }
+          // Iterate over all dates in the rota and swap
+          for (const date in newRota) {
+            const shift1 = newRota[date][memberId1];
+            const shift2 = newRota[date][memberId2];
+
+            if (shift2 !== undefined) {
+              newRota[date][memberId1] = shift2;
+            } else {
+              delete newRota[date][memberId1];
+            }
+
+            if (shift1 !== undefined) {
+              newRota[date][memberId2] = shift1;
+            } else {
+              delete newRota[date][memberId2];
             }
           }
           return { rota: newRota };
@@ -113,21 +108,13 @@ const useStore = create<AppState>()(
 
       cloneRota: () => {
         set(state => {
-          const { rota, teamMembers, shifts, startDate } = state;
-          const { newRota, newStartDate } = generateNextRota(rota, teamMembers, shifts, startDate);
+          const { teamMembers, shifts, startDate } = state;
+          // generateNextRota now creates a fresh random rota for the next period
+          const { newRota, newStartDate } = generateNextRota(teamMembers, shifts, startDate);
           
-          const combinedRota = { ...rota, ...newRota };
-          
-          const today = new Date().toISOString().split('T')[0];
-          const firstDateOfNewRota = Object.keys(newRota).sort()[0];
-
-          // If the new rota starts in the future, we keep the old start date until we reach it.
-          // Otherwise, we update the view to show the new rota period.
-          const finalStartDate = !firstDateOfNewRota || today < firstDateOfNewRota ? startDate : newStartDate;
-
           return { 
-            rota: combinedRota, 
-            startDate: finalStartDate 
+            rota: newRota, 
+            startDate: newStartDate
           };
         });
       }
@@ -138,10 +125,29 @@ const useStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       reviver: (key, value) => {
         if (key === 'startDate' && typeof value === 'string') {
-          return new Date(value).toISOString();
+          try {
+            return new Date(value).toISOString();
+          } catch (e) {
+            return startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
+          }
         }
         return value;
       },
+      // This function runs on rehydration
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const today = startOfWeek(new Date(), { weekStartsOn: 1 });
+          const rotaStartDate = startOfWeek(new Date(state.startDate), { weekStartsOn: 1 });
+
+          // If the stored rota is from a past period, generate a new one for the current period.
+          if (rotaStartDate < today || Object.keys(state.rota).length === 0) {
+            const newStartDate = today.toISOString();
+            const newRota = generateNewRota(state.teamMembers, state.shifts, newStartDate);
+            state.startDate = newStartDate;
+            state.rota = newRota;
+          }
+        }
+      }
     }
   )
 );
@@ -152,10 +158,27 @@ export const useRotaStore = <T>(selector: (state: AppState) => T): T => {
 
     React.useEffect(() => {
       setHydrated(true);
-      const { rota, generateRota, teamMembers } = useStore.getState();
-      if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
-        generateRota();
-      }
+      const unsub = useStore.persist.onRehydrateStorage(() => {
+        const { rota, generateRota, teamMembers, startDate } = useStore.getState();
+        const today = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const rotaStartDate = startOfWeek(new Date(startDate), { weekStartsOn: 1 });
+
+        if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
+          generateRota();
+        } else if (rotaStartDate < today) {
+          // If the rota is for a past week, regenerate for the current week.
+           useStore.setState({ startDate: today.toISOString() });
+           generateRota();
+        }
+      });
+      
+      // Initial check on mount
+       const { rota, generateRota, teamMembers, startDate } = useStore.getState();
+       if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
+           generateRota();
+       }
+
+      return () => unsub();
     }, []);
 
     if (!hydrated) {
@@ -166,12 +189,11 @@ export const useRotaStore = <T>(selector: (state: AppState) => T): T => {
         try {
             const initialValue = selector(initialState);
              if (Array.isArray(initialValue)) return [] as T;
-             if (typeof initialValue === 'object' && initialValue !== null && Object.keys(initialValue).length === 0) return {} as T;
-            return initialValue;
+             if (typeof initialValue === 'object' && initialValue !== null) return initialValue;
         } catch (e) {
             // Fallback for complex selectors on initial load
         }
-        return {} as T;
+        return ({} as T);
     }
     
     return state;

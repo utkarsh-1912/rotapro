@@ -2,101 +2,28 @@ import { addDays, format } from "date-fns";
 import type { TeamMember, Shift } from "./types";
 import { type Rota } from "./types";
 
-const getShiftSlots = (
-  rotatingMembers: TeamMember[],
-  shifts: Shift[]
-): string[] => {
-  const teamSize = rotatingMembers.length;
-  if (teamSize === 0) return [];
-  
-  const slots: string[] = [];
-  const shiftIds = shifts.map(s => s.id);
-  
-  const singleOccupancyShifts = ["apac", "us"];
-  const multiOccupancyShifts = shiftIds.filter(id => !singleOccupancyShifts.includes(id));
-  
-  // Assign single occupancy shifts first
-  singleOccupancyShifts.forEach(shiftId => {
-    if (shiftIds.includes(shiftId)) {
-      slots.push(shiftId);
-    }
-  });
-
-  // Fill remaining slots with multi-occupancy shifts
-  let currentMultiIndex = 0;
-  while (slots.length < teamSize) {
-    if (multiOccupancyShifts.length > 0) {
-      slots.push(multiOccupancyShifts[currentMultiIndex % multiOccupancyShifts.length]);
-      currentMultiIndex++;
-    } else if (singleOccupancyShifts.length > 0) {
-      // Fallback if not enough multi-occupancy shifts
-      slots.push(singleOccupancyShifts[currentMultiIndex % singleOccupancyShifts.length]);
-      currentMultiIndex++;
-    } else {
-      break; // No shifts available
-    }
+// Helper to shuffle an array
+function shuffle<T>(array: T[]): T[] {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
   }
-
-  return slots.slice(0, teamSize);
-};
+  return array;
+}
 
 const assignShiftsForPeriod = (
-    members: TeamMember[],
-    shiftSlots: string[],
-    startDate: string,
-    days: number
-): Rota => {
-    const rota: Rota = {};
-    const memberToShiftMap: Record<string, string> = {};
-
-    members.forEach((member, index) => {
-        const shiftId = shiftSlots[index % shiftSlots.length];
-        if (shiftId) {
-            memberToShiftMap[member.id] = shiftId;
-        }
-    });
-
-    for (let i = 0; i < days; i++) {
-        const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
-        rota[date] = {};
-        members.forEach((member) => {
-            const assignedShift = memberToShiftMap[member.id];
-            if (assignedShift) {
-                rota[date][member.id] = assignedShift;
-            }
-        });
-    }
-    return rota;
-};
-
-const assignFixedShifts = (
-  fixedShiftMembers: TeamMember[],
+  assignments: Record<string, string>,
   startDate: string,
   days: number
 ): Rota => {
   const rota: Rota = {};
   for (let i = 0; i < days; i++) {
-      const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
-      rota[date] = {};
-      fixedShiftMembers.forEach(member => {
-          if (member.fixedShiftId) {
-              rota[date][member.id] = member.fixedShiftId;
-          }
-      });
+    const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
+    rota[date] = { ...assignments };
   }
   return rota;
-};
-
-const mergeRotas = (rota1: Rota, rota2: Rota): Rota => {
-    const merged: Rota = { ...rota1 };
-    for (const date in rota2) {
-        if (merged[date]) {
-            merged[date] = { ...merged[date], ...rota2[date] };
-        } else {
-            merged[date] = rota2[date];
-        }
-    }
-    return merged;
 };
 
 export const generateNewRota = (
@@ -106,77 +33,81 @@ export const generateNewRota = (
 ): Rota => {
   if (teamMembers.length === 0) return {};
 
+  const assignments: Record<string, string> = {};
+  
+  // 1. Handle fixed shifts first
   const fixedShiftMembers = teamMembers.filter(m => m.fixedShiftId);
   const rotatingMembers = teamMembers.filter(m => !m.fixedShiftId);
   
-  const fixedShiftsRota = assignFixedShifts(fixedShiftMembers, startDate, 14);
+  fixedShiftMembers.forEach(member => {
+    if (member.fixedShiftId) {
+      assignments[member.id] = member.fixedShiftId;
+    }
+  });
 
-  let rotatingShiftsRota: Rota = {};
-  if (rotatingMembers.length > 0) {
-      const shuffledRotatingMembers = [...rotatingMembers].sort(() => Math.random() - 0.5);
-      const availableShiftSlots = getShiftSlots(shuffledRotatingMembers, shifts);
-      rotatingShiftsRota = assignShiftsForPeriod(shuffledRotatingMembers, availableShiftSlots, startDate, 14);
+  // 2. Apply constraints to rotating members
+  let availableMembers = shuffle([...rotatingMembers]);
+  const assignedShiftCounts: Record<string, number> = {};
+  shifts.forEach(s => assignedShiftCounts[s.id] = 0);
+
+  // Count fixed shifts towards constraints
+  fixedShiftMembers.forEach(m => {
+    if (m.fixedShiftId && assignedShiftCounts[m.fixedShiftId] !== undefined) {
+      assignedShiftCounts[m.fixedShiftId]++;
+    }
+  });
+
+  // Exactly 1 APAC
+  if (assignedShiftCounts['apac'] < 1 && availableMembers.length > 0) {
+    const member = availableMembers.pop()!;
+    assignments[member.id] = 'apac';
+    assignedShiftCounts['apac']++;
   }
 
-  return mergeRotas(fixedShiftsRota, rotatingShiftsRota);
+  // Exactly 1 US
+  if (assignedShiftCounts['us'] < 1 && availableMembers.length > 0) {
+    const member = availableMembers.pop()!;
+    assignments[member.id] = 'us';
+    assignedShiftCounts['us']++;
+  }
+  
+  // At least 1, at most 2 EMEA
+  let emeaCount = assignedShiftCounts['emea'];
+  while (emeaCount < 2 && availableMembers.length > 0) {
+      // Ensure at least one person is on EMEA if possible
+      if (emeaCount === 0) {
+          const member = availableMembers.pop()!;
+          assignments[member.id] = 'emea';
+          emeaCount++;
+      }
+      // Add a second person if available and coin toss is successful (or if we have plenty of people)
+      else if (emeaCount === 1 && (availableMembers.length > 2 || Math.random() > 0.5)) {
+          const member = availableMembers.pop()!;
+          assignments[member.id] = 'emea';
+          emeaCount++;
+      } else {
+          break;
+      }
+  }
+
+  // Assign remaining to LATE EMEA
+  availableMembers.forEach(member => {
+    assignments[member.id] = 'late_emea';
+  });
+
+  return assignShiftsForPeriod(assignments, startDate, 14);
 };
 
 
 export const generateNextRota = (
-  currentRota: Rota,
   teamMembers: TeamMember[],
   shifts: Shift[],
   currentStartDate: string
 ): { newRota: Rota, newStartDate: string } => {
-  const newStartDate = addDays(new Date(currentStartDate), 14).toISOString();
-  if (teamMembers.length === 0) {
-    return { newRota: {}, newStartDate };
-  }
+  const newStartDate = format(addDays(new Date(currentStartDate), 14), "yyyy-MM-dd");
   
-  const fixedShiftMembers = teamMembers.filter(m => m.fixedShiftId);
-  const rotatingMembers = teamMembers.filter(m => !m.fixedShiftId);
-
-  const fixedShiftsRota = assignFixedShifts(fixedShiftMembers, newStartDate, 14);
-
-  let rotatingShiftsRota: Rota = {};
-  if (rotatingMembers.length > 0) {
-      // Create a deterministic order for rotation
-      const sortedRotatingMembers = [...rotatingMembers].sort((a, b) => a.id.localeCompare(b.id));
-      
-      const lastDateString = format(addDays(new Date(currentStartDate), 13), "yyyy-MM-dd");
-      const lastDayAssignments = currentRota[lastDateString] || {};
-
-      const shiftSlots = getShiftSlots(sortedRotatingMembers, shifts);
-      if(shiftSlots.length === 0) return { newRota: fixedShiftsRota, newStartDate };
-
-      // Determine the shift of each member on the last day of the current rota
-      const memberLastShifts = sortedRotatingMembers.map(member => {
-        return lastDayAssignments[member.id] || null;
-      });
-
-      // Simple rotation: move the last member's shift to the first member, and so on.
-      const newShifts = [memberLastShifts[memberLastShifts.length - 1], ...memberLastShifts.slice(0, memberLastShifts.length - 1)];
-
-      const memberToShiftMap: Record<string, string> = {};
-      sortedRotatingMembers.forEach((member, index) => {
-        const newShiftId = newShifts[index];
-        if (newShiftId) {
-          memberToShiftMap[member.id] = newShiftId;
-        } else {
-          // If a member didn't have a shift (e.g., newly added), assign one from the available slots
-          memberToShiftMap[member.id] = shiftSlots[index % shiftSlots.length];
-        }
-      });
-      
-      rotatingShiftsRota = assignShiftsForPeriod(
-        sortedRotatingMembers, // Use sorted members for consistent assignment
-        Object.values(memberToShiftMap),
-        newStartDate,
-        14
-      );
-  }
-
-  const newTotalRota = mergeRotas(fixedShiftsRota, rotatingShiftsRota);
-
-  return { newRota: newTotalRota, newStartDate };
+  // For the "next" rota, we just generate a new random one for the new period.
+  const newRota = generateNewRota(teamMembers, shifts, newStartDate);
+  
+  return { newRota, newStartDate };
 };
