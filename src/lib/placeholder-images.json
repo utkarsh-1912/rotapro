@@ -1,0 +1,9 @@
+{
+  "landingHero": {
+    "src": "https://picsum.photos/seed/planning/1200/800",
+    "width": 1200,
+    "height": 800,
+    "alt": "RotaPro schedule dashboard",
+    "hint": "business planning"
+  }
+}

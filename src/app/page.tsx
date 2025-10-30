@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import placeholderImages from "@/lib/placeholder-images.json";
 
 
 export default function LandingPage() {
@@ -77,11 +78,11 @@ export default function LandingPage() {
                     transition={{ duration: 0.5, delay: 0.2 }}
                 >
                     <Image
-                        src="https://picsum.photos/seed/rotapro/1200/800"
-                        alt="RotaPro schedule dashboard"
+                        src={placeholderImages.landingHero.src}
+                        alt={placeholderImages.landingHero.alt}
                         fill
                         className="object-cover rounded-xl"
-                        data-ai-hint="team schedule"
+                        data-ai-hint={placeholderImages.landingHero.hint}
                     />
                 </motion.div>
             </div>
