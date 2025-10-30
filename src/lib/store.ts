@@ -46,23 +46,18 @@ const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: Rot
         let streakCount = 0;
         let lastShiftId: string | null = null;
         
-        // Iterate backwards from the most recent generation
-        for (let i = sortedHistory.length - 1; i >= 0; i--) {
-            const currentAssignment = sortedHistory[i].assignments[member.id];
-            
-            if (i === sortedHistory.length - 1) {
-                // This is the most recent generation
-                lastShiftId = currentAssignment || null;
-                if (lastShiftId) {
-                    streakCount = 1;
-                }
-            } else {
-                // Check if the streak continues
-                if (currentAssignment && currentAssignment === lastShiftId) {
-                    streakCount++;
-                } else {
-                    // Streak is broken
-                    break;
+        if (sortedHistory.length > 0) {
+            // Start from the most recent generation and go backwards
+            lastShiftId = sortedHistory[sortedHistory.length - 1].assignments[member.id] || null;
+            if(lastShiftId) {
+                streakCount = 1;
+                for (let i = sortedHistory.length - 2; i >= 0; i--) {
+                    const currentAssignment = sortedHistory[i].assignments[member.id];
+                    if (currentAssignment && currentAssignment === lastShiftId) {
+                        streakCount++;
+                    } else {
+                        break; // Streak broken
+                    }
                 }
             }
         }
@@ -184,7 +179,7 @@ export const useRotaStore = create<AppState>()(
 
       generateNewRota: (startDate: Date) => {
         set(state => {
-            let { teamMembers, shifts, generationHistory } = state;
+            const { teamMembers, shifts, generationHistory } = state;
             
             const totalMinRequired = shifts.reduce((acc, s) => acc + s.minTeam, 0);
             const flexibleMemberCount = teamMembers.filter(m => !m.fixedShiftId).length;
@@ -200,18 +195,16 @@ export const useRotaStore = create<AppState>()(
 
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
 
-            const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
-            
-            // Update lastShiftId for each member based on the most recent generation
-            if (sortedHistory.length > 0) {
-              const latestGeneration = sortedHistory[sortedHistory.length - 1];
-              teamMembers = teamMembers.map(m => ({
-                ...m,
-                lastShiftId: latestGeneration.assignments[m.id],
-              }));
-            }
+            // To calculate streaks correctly, we need the history of *current* members only
+            const currentMemberIds = new Set(teamMembers.map(m => m.id));
+            const filteredHistory = generationHistory.map(gen => ({
+              ...gen,
+              assignments: Object.entries(gen.assignments)
+                .filter(([memberId]) => currentMemberIds.has(memberId))
+                .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})
+            }));
 
-            const shiftStreaks = calculateShiftStreaks(teamMembers, generationHistory);
+            const shiftStreaks = calculateShiftStreaks(teamMembers, filteredHistory);
 
             const initialAssignments = generateNewRotaAssignments(teamMembers, shifts, shiftStreaks);
             

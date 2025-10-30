@@ -47,6 +47,7 @@ export const generateNewRotaAssignments = (
   const assignments: RotaAssignments = {};
   const shiftMap = new Map(allShifts.map(s => [s.id, s]));
   const sortedShifts = [...allShifts].sort((a, b) => a.sequence - b.sequence);
+  if (sortedShifts.length === 0) return {};
 
   let unassignedMembers = [...teamMembers];
   const assignedCounts: Record<string, number> = {};
@@ -78,7 +79,7 @@ export const generateNewRotaAssignments = (
   membersToForceRotate.sort((a, b) => a.name.localeCompare(b.name));
 
   membersToForceRotate.forEach(member => {
-      if (assignments[member.id]) return; // Already assigned (e.g. fixed)
+      if (assignments[member.id]) return; // Already assigned (should not happen for flexible members)
 
       const lastShiftId = shiftStreaks[member.id].shiftId!;
       const lastShift = shiftMap.get(lastShiftId)!;
@@ -95,8 +96,11 @@ export const generateNewRotaAssignments = (
           attempts++;
       }
       
-      assignments[member.id] = nextShift.id;
-      assignedCounts[nextShift.id]++;
+      // If a valid shift was found, assign it. Otherwise, they remain unassigned for now.
+      if (attempts < sortedShifts.length) {
+        assignments[member.id] = nextShift.id;
+        assignedCounts[nextShift.id]++;
+      }
   });
   unassignedMembers = unassignedMembers.filter(m => !assignments[m.id]);
 
@@ -105,6 +109,7 @@ export const generateNewRotaAssignments = (
       const streak = shiftStreaks[member.id];
       if (!streak || !streak.shiftId) return false;
       const lastShift = shiftMap.get(streak.shiftId);
+      // Only continue non-extreme shifts, and only if they haven't hit the limit of 2
       return lastShift && !lastShift.isExtreme && streak.count < 2;
   });
 
@@ -119,76 +124,73 @@ export const generateNewRotaAssignments = (
   });
   unassignedMembers = unassignedMembers.filter(m => !assignments[m.id]);
 
-  // 4. Fill remaining minimums for shifts
+  // 4. Fill remaining minimums for shifts with any remaining unassigned members
   shuffle(unassignedMembers);
   for (const shift of sortedShifts) {
     while (assignedCounts[shift.id] < shift.minTeam) {
-      let assigned = false;
-      for (let i = 0; i < unassignedMembers.length; i++) {
-        const member = unassignedMembers[i];
-        if (assignments[member.id]) continue;
+        const memberToAssign = unassignedMembers.find(member => {
+            if (assignments[member.id]) return false;
+            const lastShiftId = shiftStreaks[member.id]?.shiftId;
+            const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+            return isTransitionAllowed(lastShift, shift);
+        });
 
-        const lastShiftId = shiftStreaks[member.id]?.shiftId;
-        const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-        if (isTransitionAllowed(lastShift, shift)) {
-          assignments[member.id] = shift.id;
-          assignedCounts[shift.id]++;
-          assigned = true;
-          break; // Exit member loop and re-check while condition
+        if (memberToAssign) {
+            assignments[memberToAssign.id] = shift.id;
+            assignedCounts[shift.id]++;
+            unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign.id);
+        } else {
+            break; // No suitable members left for this shift's min requirement
         }
-      }
-      if (!assigned) {
-        break; // No suitable members left for this shift's min requirement
-      }
     }
-     unassignedMembers = unassignedMembers.filter(m => !assignments[m.id]);
   }
 
-  // 5. Assign any remaining unassigned members to any shift with capacity
+  // 5. Assign any remaining unassigned members to any shift with capacity, preferring forward sequence moves
   shuffle(unassignedMembers).forEach(member => {
     if (assignments[member.id]) return;
     const lastShiftId = shiftStreaks[member.id]?.shiftId;
     const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
     
-    // Find the next logical shift first
-    let nextBestShift: Shift | undefined = undefined;
+    // Find best possible shift: forward in sequence, with capacity, and allowed transition
+    let bestShift: Shift | undefined = undefined;
     if(lastShift) {
         let candidate = getNextShift(lastShift.id, sortedShifts);
         for(let i=0; i < sortedShifts.length; i++) {
              if (assignedCounts[candidate.id] < candidate.maxTeam && isTransitionAllowed(lastShift, candidate)) {
-                nextBestShift = candidate;
+                bestShift = candidate;
                 break;
             }
             candidate = getNextShift(candidate.id, sortedShifts);
         }
-    }
-
-    if (nextBestShift) {
-        assignments[member.id] = nextBestShift.id;
-        assignedCounts[nextBestShift.id]++;
-        return;
+    } else { // No last shift, find first available
+        bestShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam);
     }
     
-    // Fallback: if no logical next shift is available, find any with capacity
-    const fallbackShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam);
-    if(fallbackShift) {
-        assignments[member.id] = fallbackShift.id;
-        assignedCounts[fallbackShift.id]++;
+    // Fallback: if no ideal forward shift, find ANY shift with capacity
+    if (!bestShift) {
+        bestShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam);
+    }
+
+    if (bestShift) {
+        assignments[member.id] = bestShift.id;
+        assignedCounts[bestShift.id]++;
+    } else {
+        // This case should be rare, means all shifts are at max capacity
+        assignments[member.id] = "Not Assigned";
     }
   });
 
-  // 6. Final guarantee: Ensure no member is left unassigned
+  // Final check to ensure no flexible member is left unassigned
   teamMembers.forEach(member => {
-    if (!assignments[member.id] && !member.fixedShiftId) {
+    if (!member.fixedShiftId && !assignments[member.id]) {
       const fallbackShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam) || sortedShifts[0];
       if (fallbackShift) {
         assignments[member.id] = fallbackShift.id;
         assignedCounts[fallbackShift.id]++;
-      } else {
-        assignments[member.id] = "Not Assigned"; // Should be very rare
       }
     }
   });
+
 
   return assignments;
 };
@@ -222,97 +224,88 @@ export const balanceAssignments = (
     };
 
     let shiftCounts = calculateCounts();
-    let loops = 0; // Failsafe
+    let loops = 0; // Failsafe to prevent infinite loops
 
+    // Loop until all minimums are met or we can't make any more moves
     while (loops < 20) {
         const understaffedShifts = sortedShifts.filter(s => (shiftCounts[s.id]?.length ?? 0) < s.minTeam);
         const overstaffedShifts = sortedShifts.filter(s => (shiftCounts[s.id]?.length ?? 0) > s.maxTeam);
-        const appropriatelyStaffed = sortedShifts.filter(s => (shiftCounts[s.id]?.length ?? 0) >= s.minTeam && (shiftCounts[s.id]?.length ?? 0) <= s.maxTeam);
+        const appropriatelyStaffedShifts = sortedShifts.filter(s => 
+            (shiftCounts[s.id]?.length ?? 0) >= s.minTeam && (shiftCounts[s.id]?.length ?? 0) <= s.maxTeam
+        );
         
         if (understaffedShifts.length === 0) {
-            break; // All minimums met
+            break; // All minimums are met, balancing is successful
         }
         
-        const targetShift = understaffedShifts[0];
+        const targetShift = understaffedShifts[0]; // Focus on fixing the first understaffed shift
         let moved = false;
 
-        // 1. Try to find a donor from an overstaffed shift.
-        const potentialDonors = overstaffedShifts
-          .flatMap(s => shiftCounts[s.id])
-          .filter(memberId => {
-              const lastShiftId = shiftStreaks[memberId]?.shiftId;
-              const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-              return isTransitionAllowed(lastShift, targetShift);
-          });
-        
-        if(potentialDonors.length > 0) {
-            const donorId = potentialDonors[0];
-            balancedAssignments[donorId] = targetShift.id;
-            moved = true;
+        // 1. Try to pull a valid member from an overstaffed shift.
+        const potentialDonors = overstaffedShifts.flatMap(s => shiftCounts[s.id]);
+        for (const donorId of potentialDonors) {
+             const lastShiftId = shiftStreaks[donorId]?.shiftId;
+             const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+             if (isTransitionAllowed(lastShift, targetShift)) {
+                 balancedAssignments[donorId] = targetShift.id;
+                 moved = true;
+                 break;
+             }
+        }
+        if (moved) {
+            shiftCounts = calculateCounts();
+            loops++;
+            continue;
         }
 
-
-        // 2. If no donor, try to find a donor from an appropriately staffed shift that can afford to lose one.
-        if (!moved) {
-            const donorShifts = appropriatelyStaffed.filter(s => (shiftCounts[s.id]?.length ?? 0) > s.minTeam);
-            const potentialDonorsFromNormal = donorShifts
-              .flatMap(s => shiftCounts[s.id])
-              .filter(memberId => {
-                  const lastShiftId = shiftStreaks[memberId]?.shiftId;
-                  const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-                  return isTransitionAllowed(lastShift, targetShift);
-              });
-            
-             if(potentialDonorsFromNormal.length > 0) {
-                const donorId = potentialDonorsFromNormal[0];
-                balancedAssignments[donorId] = targetShift.id;
-                moved = true;
-            }
+        // 2. If no simple move is possible, try pulling from an appropriately staffed shift that can spare a member.
+        const spareableShifts = appropriatelyStaffedShifts.filter(s => (shiftCounts[s.id]?.length ?? 0) > s.minTeam);
+        const potentialSpareDonors = spareableShifts.flatMap(s => shiftCounts[s.id]);
+        for (const donorId of potentialSpareDonors) {
+             const lastShiftId = shiftStreaks[donorId]?.shiftId;
+             const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+             if (isTransitionAllowed(lastShift, targetShift)) {
+                 balancedAssignments[donorId] = targetShift.id;
+                 moved = true;
+                 break;
+             }
+        }
+        if (moved) {
+            shiftCounts = calculateCounts();
+            loops++;
+            continue;
         }
 
-        // 3. If still no move, try a swap with an overstaffed shift.
-        if (!moved) {
-            for (const sourceShift of overstaffedShifts) {
-                const swapperFromOverstaffed = (shiftCounts[sourceShift.id] || []).find(memberId => {
-                     const lastShiftId = shiftStreaks[memberId]?.shiftId;
-                     const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-                     return isTransitionAllowed(lastShift, targetShift);
+        // 3. If still nothing, try to SWAP a member from the understaffed shift with one from an overstaffed shift.
+        for (const sourceShift of overstaffedShifts) {
+            const memberToMoveToTarget = (shiftCounts[sourceShift.id] || []).find(memberId => {
+                 const lastShift = shiftStreaks[memberId]?.shiftId ? shiftMap.get(shiftStreaks[memberId].shiftId!) : undefined;
+                 return isTransitionAllowed(lastShift, targetShift);
+            });
+
+            if (memberToMoveToTarget) {
+                const memberToMoveToSource = (shiftCounts[targetShift.id] || []).find(memberId => {
+                    const lastShift = shiftStreaks[memberId]?.shiftId ? shiftMap.get(shiftStreaks[memberId].shiftId!) : undefined;
+                    return isTransitionAllowed(lastShift, sourceShift);
                 });
 
-                if (swapperFromOverstaffed) {
-                    const swapperFromUnderstaffed = (shiftCounts[targetShift.id] || []).find(memberId => {
-                        const lastShiftId = shiftStreaks[memberId]?.shiftId;
-                        const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-                        return isTransitionAllowed(lastShift, sourceShift);
-                    });
-
-                    if (swapperFromUnderstaffed) {
-                        balancedAssignments[swapperFromOverstaffed] = targetShift.id;
-                        balancedAssignments[swapperFromUnderstaffed] = sourceShift.id;
-                        moved = true;
-                        break;
-                    }
+                if (memberToMoveToSource) {
+                    balancedAssignments[memberToMoveToTarget] = targetShift.id;
+                    balancedAssignments[memberToMoveToSource] = sourceShift.id;
+                    moved = true;
+                    break;
                 }
             }
         }
+        if (moved) {
+            shiftCounts = calculateCounts();
+            loops++;
+            continue;
+        }
         
-        if (!moved) {
-            // Failsafe: just move someone from the most overstaffed shift.
-            const mostOverstaffed = overstaffedShifts.sort((a,b) => (shiftCounts[b.id]?.length ?? 0) - (shiftCounts[a.id]?.length ?? 0))[0];
-            if(mostOverstaffed) {
-                const memberToMove = shiftCounts[mostOverstaffed.id][0];
-                balancedAssignments[memberToMove] = targetShift.id;
-                moved = true;
-            }
-        }
-
-        if (!moved) {
-            console.warn("Could not balance shifts. Check constraints.", { understaffedShifts, overstaffedShifts });
-            break;
-        }
-
-        shiftCounts = calculateCounts();
-        loops++;
+        // If we get here, no valid moves or swaps could be found. Break to avoid infinite loop.
+        console.warn("Could not fully balance shifts. Check constraints vs. team size.", { understaffedShifts });
+        break;
     }
 
     if (loops >= 20) {
