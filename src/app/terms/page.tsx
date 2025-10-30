@@ -1,11 +1,16 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function TermsPage() {
   return (
     <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:underline mb-4">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+        </Link>
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl font-extrabold tracking-tight">Terms of Service & Privacy Policy</CardTitle>
@@ -27,12 +32,6 @@ export default function TermsPage() {
               <h2 className="text-xl font-semibold text-foreground">3. Limitation of Liability</h2>
               <p>In no event shall the creators or providers of RotaPro be liable for any direct, indirect, incidental, special, or consequential damages arising out of or in connection with the use or inability to use the Service. As a demo app, data may be reset or become inaccessible without notice.</p>
             </section>
-            
-            <div className="pt-6">
-              <Button asChild>
-                <Link href="/">Back to Home</Link>
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
