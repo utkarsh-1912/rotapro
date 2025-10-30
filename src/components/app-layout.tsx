@@ -16,6 +16,7 @@ import {
   SidebarFooter,
   SidebarClose,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle } from "lucide-react";
@@ -73,6 +74,8 @@ function ThemeToggle() {
 function AppHeaderContent() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const { state: sidebarState, isMobile } = useSidebar();
+  const isCollapsed = sidebarState === 'collapsed';
 
   const handleLogout = async () => {
     await signOut(getAuth());
@@ -83,10 +86,14 @@ function AppHeaderContent() {
     <>
       <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden"/>
-        <Link href="/" className="flex items-center gap-2 md:hidden">
-            <Logo />
-            <span className="font-bold text-xl">RotaPro</span>
-        </Link>
+        {isCollapsed && !isMobile && (
+             <Link href="/" className="flex items-center gap-2">
+               <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
+                <Logo />
+               </div>
+               <span className="font-bold text-xl">RotaPro</span>
+            </Link>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
