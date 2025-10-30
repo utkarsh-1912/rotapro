@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -27,10 +28,10 @@ import { getAuth, signOut } from "firebase/auth";
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M24 10C17.37 10 12 15.37 12 22C12 28.63 17.37 34 24 34C30.63 34 36 28.63 36 22" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M24 34C30.63 34 36 28.63 36 22C36 15.37 30.63 10 24 10C17.37 10 12 15.37 12 22" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 8"/>
-    <path d="M24 4V10" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-    <path d="M24 34V40" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+    <path d="M24 10C17.37 10 12 15.37 12 22C12 28.63 17.37 34 24 34C30.63 34 36 28.63 36 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M24 34C30.63 34 36 28.63 36 22C36 15.37 30.63 10 24 10C17.37 10 12 15.37 12 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 8"/>
+    <path d="M24 4V10" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+    <path d="M24 34V40" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
   </svg>
 );
 
@@ -70,14 +71,11 @@ function AppHeaderContent() {
 
   if (sidebarState === "collapsed") {
     return (
-      <div className="flex items-center gap-2">
-        <SidebarTrigger />
-        <div className="flex items-center gap-2.5">
-            <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
-                <Logo />
-            </div>
-            <span className="text-lg font-semibold">RotaPro</span>
-        </div>
+      <div className="flex items-center gap-2.5">
+          <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
+              <Logo />
+          </div>
+          <span className="text-lg font-semibold">RotaPro</span>
       </div>
     );
   }
@@ -121,7 +119,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <span className="text-lg font-semibold">RotaPro</span>
               </div>
             </div>
-             <div className="hidden group-data-[collapsible=icon]:flex">
+             <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center">
                <SidebarTrigger />
             </div>
           <SidebarClose />
