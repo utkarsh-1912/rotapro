@@ -35,8 +35,8 @@ export default function GuidePage() {
         <CardContent>
           <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
             <AccordionItem value="item-1">
-              <AccordionTrigger className="text-lg font-semibold">
-                <Users className="mr-3 h-5 w-5 text-primary" />
+              <AccordionTrigger className="text-lg font-semibold justify-start gap-3">
+                <Users className="h-5 w-5 text-primary shrink-0" />
                 Step 1: Set Up Your Team & Shifts
               </AccordionTrigger>
               <AccordionContent className="text-base leading-relaxed pl-8 pt-2">
@@ -59,8 +59,8 @@ export default function GuidePage() {
             </AccordionItem>
 
             <AccordionItem value="item-2">
-              <AccordionTrigger className="text-lg font-semibold">
-                <ListChecks className="mr-3 h-5 w-5 text-primary" />
+              <AccordionTrigger className="text-lg font-semibold justify-start gap-3">
+                <ListChecks className="mr-3 h-5 w-5 text-primary shrink-0" />
                 Step 2: Generate & Manage Your Rota
               </AccordionTrigger>
               <AccordionContent className="text-base leading-relaxed pl-8 pt-2">
@@ -81,8 +81,8 @@ export default function GuidePage() {
             </AccordionItem>
             
             <AccordionItem value="item-3">
-              <AccordionTrigger className="text-lg font-semibold">
-                <ListTree className="mr-3 h-5 w-5 text-primary" />
+              <AccordionTrigger className="text-lg font-semibold justify-start gap-3">
+                <ListTree className="mr-3 h-5 w-5 text-primary shrink-0" />
                 Step 3: Analyze Rota History
               </AccordionTrigger>
               <AccordionContent className="text-base leading-relaxed pl-8 pt-2">
