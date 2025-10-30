@@ -10,7 +10,6 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-// US -> EMEA -> APAC -> LATE EMEA -> US
 const SHIFT_ORDER: string[] = ['us', 'emea', 'apac', 'late_emea'];
 
 const getNextShiftId = (currentShiftId: string | null): string => {
@@ -82,8 +81,10 @@ export const generateNewRotaAssignments = (
       
       if (!memberToAssign) memberToAssign = unassignedMembers[0]; // fallback if everyone was on a conflicting shift
 
-      assignments[memberToAssign.id] = shiftId;
-      unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
+      if (memberToAssign) {
+        assignments[memberToAssign.id] = shiftId;
+        unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
+      }
     }
   });
 
@@ -93,8 +94,10 @@ export const generateNewRotaAssignments = (
       let memberToAssign = unassignedMembers.find(m => shiftStreaks[m.id]?.shiftId !== 'emea');
       if (!memberToAssign) memberToAssign = unassignedMembers[0];
 
-      assignments[memberToAssign.id] = 'emea';
-      unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
+      if (memberToAssign) {
+        assignments[memberToAssign.id] = 'emea';
+        unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
+      }
   }
 
   // 6. Assign all remaining members following the rotation order
@@ -102,7 +105,7 @@ export const generateNewRotaAssignments = (
     assignments[member.id] = 'late_emea'; // Default remaining to LATE EMEA
   });
   
-  // Final balancing pass to ensure minimums are met
+  // 7. Final balancing pass to ensure minimums are met
   const finalCounts = Object.values(assignments).reduce((acc, shiftId) => {
     if(shiftId) acc[shiftId] = (acc[shiftId] || 0) + 1;
     return acc;
@@ -111,11 +114,11 @@ export const generateNewRotaAssignments = (
   ['apac', 'us', 'emea'].forEach(shiftId => {
     if ((finalCounts[shiftId] || 0) < 1) {
       // Find someone from LATE EMEA to move
-      const memberToMove = Object.keys(assignments).find(memberId => 
+      const memberToMoveId = Object.keys(assignments).find(memberId => 
         assignments[memberId] === 'late_emea' && !teamMembers.find(m => m.id === memberId)?.fixedShiftId
       );
-      if (memberToMove) {
-        assignments[memberToMove] = shiftId;
+      if (memberToMoveId) {
+        assignments[memberToMoveId] = shiftId;
         finalCounts[shiftId] = (finalCounts[shiftId] || 0) + 1;
         finalCounts['late_emea'] = (finalCounts['late_emea'] || 1) - 1;
       }
