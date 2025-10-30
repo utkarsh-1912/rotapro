@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarCheck, Shield, Users } from "lucide-react";
+import { CalendarCheck, Settings, Users } from "lucide-react";
 
 const Logo = () => (
   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -40,9 +40,9 @@ export default function LandingPage() {
       description: "Easily add, remove, and manage your team members and their fixed shift assignments.",
     },
     {
-      icon: <Shield className="h-8 w-8 text-primary" />,
-      title: "Admin Controls",
-      description: "Powerful admin panel to oversee all aspects of shift and rota management.",
+      icon: <Settings className="h-8 w-8 text-primary" />,
+      title: "Config Panel",
+      description: "Powerful config panel to oversee all aspects of shift and rota management.",
     },
   ];
 

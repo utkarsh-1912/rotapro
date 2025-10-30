@@ -17,7 +17,7 @@ export default function AdminPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Admin Panel</CardTitle>
+          <CardTitle>Config Panel</CardTitle>
           <CardDescription>Manage your team and shifts from one place.</CardDescription>
         </CardHeader>
         <CardContent>
