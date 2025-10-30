@@ -20,6 +20,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
+function ClientOnly({ children }: { children: React.ReactNode }) {
+    const [hasMounted, setHasMounted] = React.useState(false);
+    React.useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
+    if (!hasMounted) {
+        return null;
+    }
+
+    return <>{children}</>;
+}
+
+
 export function GenerationHistory() {
     const { generationHistory, activeGenerationId } = useRotaStore();
     const { deleteGeneration, setActiveGenerationId } = useRotaStoreActions();
@@ -57,9 +71,11 @@ export function GenerationHistory() {
                                             <div className="font-semibold">
                                                 Rota for {format(startDate, 'd MMM')} - {format(endDate, 'd MMM yyyy')}
                                             </div>
-                                            <div className="text-sm text-muted-foreground">
-                                                Generated on: {format(new Date(parseInt(gen.id)), 'PPpp')}
-                                            </div>
+                                            <ClientOnly>
+                                                <div className="text-sm text-muted-foreground">
+                                                    Generated on: {format(new Date(parseInt(gen.id)), 'PPpp')}
+                                                </div>
+                                            </ClientOnly>
                                         </div>
                                     </div>
                                     <AlertDialog>
