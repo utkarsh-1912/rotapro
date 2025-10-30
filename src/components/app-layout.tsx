@@ -16,10 +16,9 @@ import {
   SidebarFooter,
   SidebarClose,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, PanelLeft, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "./ui/dropdown-menu";
@@ -82,9 +81,12 @@ function AppHeaderContent() {
 
   return (
     <>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden"/>
-        <span className="text-lg font-semibold hidden sm:block">RotaPro</span>
+        <Link href="/" className="flex items-center gap-2 md:hidden">
+            <Logo />
+            <span className="font-bold text-xl">RotaPro</span>
+        </Link>
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
