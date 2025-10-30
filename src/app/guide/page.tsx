@@ -92,12 +92,12 @@ export default function GuidePage() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-base leading-relaxed pl-8 pt-2">
-                <p className="mb-4">Use the <span className="font-semibold text-primary">Rota Matrix</span> to see a long-term view of assignments and ensure fairness.</p>
+                <p className="mb-4">Use the <span className="font-semibold text-primary">Rota Matrix</span> page to see a long-term view of assignments and ensure fairness.</p>
                 <ul className="list-disc space-y-2 pl-6">
                     <li>The matrix displays a historical table of all generated rotas.</li>
                     <li>Team members are listed as rows, and rota periods are columns.</li>
-                    <li>Quickly see who was assigned to which shift and when.</li>
-                    <li>Use the pagination to navigate through your entire rota history.</li>
+                    <li>Quickly see who was assigned to which shift and when. Use the pagination to navigate through your entire rota history.</li>
+                    <li>The <span className="font-semibold text-primary">Manual Swap History</span> table at the bottom logs all manual shift swaps, showing who was swapped and when, to help you track changes.</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
