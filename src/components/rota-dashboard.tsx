@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "./ui/skeleton";
 
 export function RotaDashboard() {
   const { rota, teamMembers, shifts, startDate } = useRotaStore((state) => ({
@@ -32,8 +33,11 @@ export function RotaDashboard() {
   const { cloneRota } = useRotaStoreActions();
   const { toast } = useToast();
   const [isSwapDialogOpen, setSwapDialogOpen] = React.useState(false);
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
 
   const handleExport = () => {
+    if (!startDate) return;
     const csvData: (string | number)[][] = [];
     const headers = ["Date", ...teamMembers.map((m) => m.name)];
     csvData.push(headers);
@@ -66,8 +70,8 @@ export function RotaDashboard() {
     });
   };
 
-  const start = parseISO(startDate);
-  const end = addDays(start, 13);
+  const start = isMounted && startDate ? parseISO(startDate) : new Date();
+  const end = isMounted && startDate ? addDays(start, 13) : new Date();
 
   return (
     <motion.div
@@ -79,9 +83,13 @@ export function RotaDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Current Rota</h1>
-            <p className="text-muted-foreground">
-                Showing shifts for {format(start, 'do MMMM')} - {format(end, 'do MMMM yyyy')}
-            </p>
+            {isMounted && startDate ? (
+              <p className="text-muted-foreground">
+                  Showing shifts for {format(start, 'do MMMM')} - {format(end, 'do MMMM yyyy')}
+              </p>
+            ) : (
+              <Skeleton className="h-5 w-80 mt-1" />
+            )}
         </div>
         <div className="flex gap-2 flex-wrap">
             <AlertDialog>
