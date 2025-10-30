@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -15,6 +16,10 @@ import placeholderImages from "@/lib/placeholder-images.json";
 
 
 export default function LandingPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
   const featureVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: (i: number) => ({
@@ -44,6 +49,19 @@ export default function LandingPage() {
       description: "Powerful config panel to oversee all aspects of shift and rota management.",
     },
   ];
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const recipientEmail = "contact@rotapro.com";
+    const subject = "Message from RotaPro Landing Page";
+    const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(
+      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
+    )}`;
+    window.location.href = mailtoLink;
+  };
+
 
   return (
     <AppLayout>
@@ -126,20 +144,20 @@ export default function LandingPage() {
                   <CardDescription>Have a question or feedback? We'd love to hear from you.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form className="space-y-6">
+                  <form className="space-y-6" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="name-landing">Name</Label>
-                        <Input id="name-landing" placeholder="Your Name" />
+                        <Input id="name-landing" placeholder="Your Name" value={name} onChange={(e) => setName(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email-landing">Email</Label>
-                        <Input id="email-landing" type="email" placeholder="you@example.com" />
+                        <Input id="email-landing" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="message-landing">Message</Label>
-                      <Textarea id="message-landing" placeholder="Your message here..." rows={5} />
+                      <Textarea id="message-landing" placeholder="Your message here..." rows={5} value={message} onChange={(e) => setMessage(e.target.value)} required />
                     </div>
                     <div className="text-center pt-2">
                       <Button type="submit" size="lg">Send Message</Button>
