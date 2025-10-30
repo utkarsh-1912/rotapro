@@ -354,7 +354,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex items-center justify-between p-2", className)}
       {...props}
     />
   )
@@ -369,7 +369,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2 mt-auto", className)}
+      className={cn("mt-auto border-t border-sidebar-border", className)}
       {...props}
     />
   )
@@ -561,16 +561,7 @@ const SidebarMenuButton = React.forwardRef<
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
       >
-        {React.Children.map(children, (child) =>
-          React.isValidElement(child) && child.type === "span"
-            ? React.cloneElement(child as React.ReactElement, {
-                className: cn(
-                  child.props.className,
-                  "group-data-[collapsible=icon]:hidden"
-                ),
-              })
-            : child
-        )}
+        {children}
       </Comp>
     )
 
