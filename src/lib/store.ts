@@ -36,29 +36,38 @@ const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: Rot
         streaks[member.id] = { shiftId: null, count: 0 };
     });
 
-    // Sort history from most recent to oldest
-    const sortedHistory = [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
-    
-    if (sortedHistory.length === 0) {
+    if (generationHistory.length === 0) {
         return streaks;
     }
 
+    // Sort history from OLDEST to NEWEST to calculate streaks correctly
+    const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
+    
     for (const member of teamMembers) {
-        const lastGenAssignment = sortedHistory[0].assignments[member.id];
-        if (!lastGenAssignment) {
-            streaks[member.id] = { shiftId: null, count: 0 };
-            continue;
-        }
-
         let streakCount = 0;
-        for (const generation of sortedHistory) {
-            if (generation.assignments[member.id] === lastGenAssignment) {
-                streakCount++;
+        let lastShiftId: string | null = null;
+        
+        // Iterate backwards from the most recent generation
+        for (let i = sortedHistory.length - 1; i >= 0; i--) {
+            const currentAssignment = sortedHistory[i].assignments[member.id];
+            
+            if (i === sortedHistory.length - 1) {
+                // This is the most recent generation
+                lastShiftId = currentAssignment || null;
+                if (lastShiftId) {
+                    streakCount = 1;
+                }
             } else {
-                break; // Streak is broken
+                // Check if the streak continues
+                if (currentAssignment && currentAssignment === lastShiftId) {
+                    streakCount++;
+                } else {
+                    // Streak is broken
+                    break;
+                }
             }
         }
-        streaks[member.id] = { shiftId: lastGenAssignment, count: streakCount };
+        streaks[member.id] = { shiftId: lastShiftId, count: streakCount };
     }
 
     return streaks;
@@ -130,9 +139,11 @@ export const useRotaStore = create<AppState>()(
             
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
 
+            const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
+            
             // Update lastShiftId for each member based on the most recent generation
-            if (generationHistory.length > 0) {
-              const latestGeneration = [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime())[0];
+            if (sortedHistory.length > 0) {
+              const latestGeneration = sortedHistory[sortedHistory.length - 1];
               teamMembers = teamMembers.map(m => ({
                 ...m,
                 lastShiftId: latestGeneration.assignments[m.id],
