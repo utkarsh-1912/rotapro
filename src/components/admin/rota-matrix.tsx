@@ -1,18 +1,28 @@
+
 "use client";
 
 import React from "react";
 import { useRotaStore } from "@/lib/store";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Badge } from "../ui/badge";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../ui/pagination";
 
 export function RotaMatrix() {
     const { teamMembers, generationHistory, shifts } = useRotaStore();
+    const [currentPage, setCurrentPage] = React.useState(0);
+    const itemsPerPage = 5;
     
     const sortedHistory = React.useMemo(() =>
         [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()),
         [generationHistory]
+    );
+
+    const pageCount = Math.ceil(sortedHistory.length / itemsPerPage);
+    const paginatedHistory = sortedHistory.slice(
+        currentPage * itemsPerPage,
+        (currentPage + 1) * itemsPerPage
     );
 
     const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
@@ -43,7 +53,7 @@ export function RotaMatrix() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
-                                {sortedHistory.map(gen => (
+                                {paginatedHistory.map(gen => (
                                     <TableHead key={gen.id} className="text-center font-semibold">
                                         {format(parseISO(gen.startDate), 'd MMM yyyy')}
                                     </TableHead>
@@ -54,7 +64,7 @@ export function RotaMatrix() {
                             {teamMembers.map(member => (
                                 <TableRow key={member.id}>
                                     <TableCell className="font-medium sticky left-0 bg-card z-10">{member.name}</TableCell>
-                                    {sortedHistory.map(gen => {
+                                    {paginatedHistory.map(gen => {
                                         const assignmentId = gen.assignments[member.id];
                                         const shift = assignmentId ? shiftMap.get(assignmentId) : null;
                                         
@@ -88,7 +98,7 @@ export function RotaMatrix() {
                             ))}
                              {teamMembers.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={sortedHistory.length + 1} className="text-center text-muted-foreground h-24">
+                                    <TableCell colSpan={paginatedHistory.length + 1} className="text-center text-muted-foreground h-24">
                                         No team members found.
                                     </TableCell>
                                 </TableRow>
@@ -102,6 +112,31 @@ export function RotaMatrix() {
                     </div>
                 )}
             </CardContent>
+            {pageCount > 1 && (
+                <CardFooter>
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious 
+                                    onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} 
+                                    className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                                />
+                            </PaginationItem>
+                            <PaginationItem>
+                                <span className="text-sm font-medium">
+                                    Page {currentPage + 1} of {pageCount}
+                                </span>
+                            </PaginationItem>
+                            <PaginationItem>
+                                <PaginationNext 
+                                    onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
+                                    className={currentPage === pageCount - 1 ? "pointer-events-none opacity-50" : undefined}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </CardFooter>
+            )}
         </Card>
     )
 }
