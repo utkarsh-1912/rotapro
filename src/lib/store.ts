@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState, Rota, TeamMember } from "./types";
+import type { AppState, Rota, TeamMember, Shift } from "./types";
 import { addDays, format, startOfWeek } from "date-fns";
 import { generateNewRota, generateNextRota } from "./rotaGenerator";
 
@@ -24,7 +24,6 @@ const useStore = create<AppState>()(
       ],
       rota: {},
       startDate: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
-      previousRotations: {},
 
       addTeamMember: (name, fixedShiftId) =>
         set((state) => ({
@@ -68,44 +67,54 @@ const useStore = create<AppState>()(
       })),
 
       generateRota: () => {
-        const { teamMembers, startDate } = get();
-        const newRota = generateNewRota(teamMembers, startDate);
+        const { teamMembers, shifts, startDate } = get();
+        const newRota = generateNewRota(teamMembers, shifts, startDate);
         set({ rota: newRota });
       },
 
-      swapShifts: (date, memberId1, memberId2) => {
+      swapShifts: (memberId1, memberId2) => {
         set(state => {
-          const newRota = JSON.parse(JSON.stringify(state.rota));
+          const newRota: Rota = JSON.parse(JSON.stringify(state.rota));
+          const { startDate } = state;
+      
           const member1 = state.teamMembers.find(m => m.id === memberId1);
           const member2 = state.teamMembers.find(m => m.id === memberId2);
-
+      
           if (member1?.fixedShiftId || member2?.fixedShiftId) {
-              console.warn("Cannot swap shifts for members with fixed assignments.");
-              return state;
+            console.warn("Cannot swap shifts for members with fixed assignments.");
+            return state;
           }
-
-          if (newRota[date]) {
-            const shift1 = newRota[date][memberId1];
-            const shift2 = newRota[date][memberId2];
-            
-            if (shift1 === undefined && shift2 === undefined) return state; // both are off, nothing to swap
-
-            newRota[date][memberId1] = shift2;
-            newRota[date][memberId2] = shift1;
-
-            if (newRota[date][memberId1] === undefined) delete newRota[date][memberId1];
-            if (newRota[date][memberId2] === undefined) delete newRota[date][memberId2];
-            
-            return { rota: newRota };
+      
+          // Iterate over the 14 days of the current rota period
+          for (let i = 0; i < 14; i++) {
+            const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
+      
+            if (newRota[date]) {
+              const shift1 = newRota[date][memberId1];
+              const shift2 = newRota[date][memberId2];
+      
+              // Perform the swap for the day
+              if (shift2 !== undefined) {
+                newRota[date][memberId1] = shift2;
+              } else {
+                delete newRota[date][memberId1];
+              }
+      
+              if (shift1 !== undefined) {
+                newRota[date][memberId2] = shift1;
+              } else {
+                delete newRota[date][memberId2];
+              }
+            }
           }
-          return state;
+          return { rota: newRota };
         });
       },
 
       cloneRota: () => {
         set(state => {
-          const { rota, teamMembers, startDate } = state;
-          const { newRota, newStartDate } = generateNextRota(rota, teamMembers, startDate);
+          const { rota, teamMembers, shifts, startDate } = state;
+          const { newRota, newStartDate } = generateNextRota(rota, teamMembers, shifts, startDate);
           
           const combinedRota = { ...rota, ...newRota };
           
@@ -114,7 +123,7 @@ const useStore = create<AppState>()(
 
           // If the new rota starts in the future, we keep the old start date until we reach it.
           // Otherwise, we update the view to show the new rota period.
-          const finalStartDate = today < firstDateOfNewRota! ? startDate : newStartDate;
+          const finalStartDate = !firstDateOfNewRota || today < firstDateOfNewRota ? startDate : newStartDate;
 
           return { 
             rota: combinedRota, 

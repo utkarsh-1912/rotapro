@@ -14,7 +14,7 @@ export interface Shift {
 
 // Rota is stored as a Record mapping date strings (YYYY-MM-DD) to assignments
 // Assignments map a team member's ID to a shift ID
-export type Rota = Record<string, Record<string, string>>;
+export type Rota = Record<string, Record<string, string | undefined>>;
 
 export interface AppState {
   teamMembers: TeamMember[];
@@ -27,6 +27,6 @@ export interface AppState {
   updateShift: (id: string, newShift: Partial<Shift>) => void;
   setRota: (newRota: Rota, newStartDate?: string) => void;
   generateRota: () => void;
-  swapShifts: (date: string, memberId1: string, memberId2: string) => void;
+  swapShifts: (memberId1: string, memberId2: string) => void;
   cloneRota: () => void;
 }
