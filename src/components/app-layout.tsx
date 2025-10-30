@@ -27,8 +27,8 @@ import { useAuthStore } from "@/lib/auth-store";
 import { getAuth, signOut } from "firebase/auth";
 import { cn } from "@/lib/utils";
 
-const Logo = () => (
-  <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+const Logo = ({className}: {className?: string}) => (
+  <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M24 10C17.37 10 12 15.37 12 22C12 28.63 17.37 34 24 34C30.63 34 36 28.63 36 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M24 34C30.63 34 36 28.63 36 22C36 15.37 30.63 10 24 10C17.37 10 12 15.37 12 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 8"/>
     <path d="M24 4V10" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
@@ -133,7 +133,7 @@ function PublicHeaderContent() {
     <>
         <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2">
-               <Logo />
+               <Logo className="text-primary" />
                <span className="font-bold text-xl">RotaPro</span>
             </Link>
           </div>
