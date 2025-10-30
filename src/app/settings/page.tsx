@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -54,10 +54,19 @@ function ProfileForm() {
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: profile?.name || "",
-      email: profile?.email || "",
+      name: "",
+      email: "",
     },
   });
+
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        name: profile.name || "",
+        email: profile.email || "",
+      });
+    }
+  }, [profile, form]);
 
   const onSubmit = async (values: z.infer<typeof profileSchema>) => {
     setIsLoading(true);
@@ -280,7 +289,7 @@ function PasswordForm() {
                           {showNewPassword ? (
                             <EyeOff className="h-5 w-5" />
                           ) : (
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-5 w-f" />
                           )}
                         </button>
                       </div>
