@@ -13,12 +13,27 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { TeamMember } from "@/lib/types";
 
 export function RotaMatrix() {
-    const { teamMembers, generationHistory, shifts } = useRotaStore();
+    const { generationHistory, shifts } = useRotaStore();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
     const itemsPerPage = 5;
+
+    const allHistoricalMembers = React.useMemo(() => {
+        const memberMap = new Map<string, TeamMember>();
+        generationHistory.forEach(gen => {
+            if (gen.teamMembersAtGeneration) {
+                gen.teamMembersAtGeneration.forEach(member => {
+                    if (!memberMap.has(member.id)) {
+                        memberMap.set(member.id, member);
+                    }
+                });
+            }
+        });
+        return Array.from(memberMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [generationHistory]);
     
     const sortedHistory = React.useMemo(() =>
         [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()),
@@ -49,12 +64,12 @@ export function RotaMatrix() {
             return `${format(startDate, 'd MMM')} - ${format(endDate, 'd MMM yyyy')}`;
         })];
 
-        const rows = teamMembers.map(member => {
+        const rows = allHistoricalMembers.map(member => {
             const memberRow = [member.name];
             sortedHistory.forEach(gen => {
                 const shiftId = gen.assignments[member.id];
                 const shift = shiftId ? shiftMap.get(shiftId) : null;
-                const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? true;
+                const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? false;
 
                 if (!wasMemberInTeam) {
                     memberRow.push("Not in team");
@@ -106,7 +121,7 @@ export function RotaMatrix() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {teamMembers.map(member => (
+                                {allHistoricalMembers.map(member => (
                                     <TableRow key={member.id}>
                                         <TableCell className="font-medium sticky left-0 bg-card z-10">{member.name}</TableCell>
                                         {paginatedHistory.map(gen => {
@@ -114,7 +129,7 @@ export function RotaMatrix() {
                                             const shift = assignmentId ? shiftMap.get(assignmentId) : null;
                                             const isOverridden = gen.manualOverrides?.includes(member.id);
                                             
-                                            const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? true;
+                                            const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? false;
 
                                             if (!wasMemberInTeam) {
                                               return (
@@ -154,7 +169,7 @@ export function RotaMatrix() {
                                         })}
                                     </TableRow>
                                 ))}
-                                {teamMembers.length === 0 && (
+                                {allHistoricalMembers.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={paginatedHistory.length + 1} className="text-center text-muted-foreground h-24">
                                             No team members found.
@@ -164,7 +179,7 @@ export function RotaMatrix() {
                             </TableBody>
                         </Table>
                     </div>
-                    {sortedHistory.length === 0 && teamMembers.length > 0 && (
+                    {sortedHistory.length === 0 && allHistoricalMembers.length > 0 && (
                         <div className="text-center text-muted-foreground py-10">
                             No rota history found. Generate your first rota to see the matrix.
                         </div>
