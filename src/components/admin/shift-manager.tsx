@@ -18,6 +18,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -28,7 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "../ui/checkbox";
 import { Badge } from "../ui/badge";
@@ -56,12 +67,11 @@ function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean)
         resolver: zodResolver(shiftSchema),
         defaultValues: isEditMode ? {
             ...shift,
-            sequence: String(shift.sequence)
         } : {
             name: "",
             startTime: "09:00",
             endTime: "17:00",
-            sequence: "1",
+            sequence: 1,
             isExtreme: false,
             minTeam: 1,
             maxTeam: Math.max(1, teamMembers.length),
@@ -207,6 +217,7 @@ function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean)
 
 export function ShiftManager() {
   const shifts = useRotaStore((state) => state.shifts);
+  const { deleteShift } = useRotaStoreActions();
   const [openDialogs, setOpenDialogs] = React.useState<Record<string, boolean>>({});
 
   const setOpen = (id: string, open: boolean) => {
@@ -267,6 +278,28 @@ export function ShiftManager() {
                       <ShiftForm shift={shift} setOpen={(isOpen) => setOpen(shift.id, isOpen)} />
                     </DialogContent>
                   </Dialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete Shift</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the {shift.name} shift.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteShift(shift.id)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}

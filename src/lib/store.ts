@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember } from "./types";
 import { startOfWeek, formatISO, parseISO } from "date-fns";
 import { generateNewRotaAssignments } from "./rotaGenerator";
+import { toast } from "@/hooks/use-toast";
 
 const SHIFT_COLORS = [
     'bg-blue-200',
@@ -117,6 +118,31 @@ export const useRotaStore = create<AppState>()(
           ),
         })),
       
+      deleteShift: (id: string) => {
+        set(state => {
+          const { teamMembers, shifts } = state;
+          const shiftIsFixed = teamMembers.some(m => m.fixedShiftId === id);
+
+          if (shiftIsFixed) {
+              toast({
+                  variant: "destructive",
+                  title: "Deletion Failed",
+                  description: "Cannot delete a shift that is set as a fixed shift for a team member.",
+              });
+              return state;
+          }
+
+          toast({
+              title: "Shift Deleted",
+              description: `The shift has been successfully deleted.`,
+          });
+
+          return {
+              shifts: shifts.filter(s => s.id !== id),
+          };
+        });
+      },
+
       updateAssignmentsForGeneration: (generationId, newAssignments) => set(state => {
         const { generationHistory } = state;
         if (!generationId) return state;
@@ -235,6 +261,7 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     deleteTeamMember: state.deleteTeamMember,
     addShift: state.addShift,
     updateShift: state.updateShift,
+    deleteShift: state.deleteShift,
     generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,
     deleteGeneration: state.deleteGeneration,
