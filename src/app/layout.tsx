@@ -10,6 +10,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "RotaPro - Professional Rota Management",
   description: "Manage team shifts and generate rotas with ease.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  }
 };
 
 export default function RootLayout({
