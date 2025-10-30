@@ -1,9 +1,9 @@
 {
   "landingHero": {
-    "src": "https://picsum.photos/seed/planning/1200/800",
+    "src": "https://picsum.photos/seed/modern-desk/1200/800",
     "width": 1200,
     "height": 800,
-    "alt": "RotaPro schedule dashboard",
-    "hint": "business planning"
+    "alt": "Modern desk with a computer showing a schedule",
+    "hint": "modern desk"
   }
 }
