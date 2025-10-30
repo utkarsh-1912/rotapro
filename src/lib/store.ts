@@ -1,29 +1,66 @@
-
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState } from "./types";
-import { startOfWeek } from "date-fns";
-import { generateNewRota, generateNextRota } from "./rotaGenerator";
+import type { AppState, RotaGeneration, ShiftStreak, TeamMember } from "./types";
+import { startOfWeek, addDays, format, parseISO } from "date-fns";
+import { generateNewRotaAssignments } from "./rotaGenerator";
+
+const getInitialState = () => {
+    const startDate = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
+    const initialGeneration: RotaGeneration = {
+        id: new Date().getTime().toString(),
+        startDate: startDate,
+        assignments: {}
+    };
+    return {
+        teamMembers: [
+            { id: "1", name: "Alice Johnson" },
+            { id: "2", name: "Bob Williams" },
+            { id: "3", name: "Charlie Brown" },
+            { id: "4", name: "Diana Miller" },
+            { id: "5", name: "Ethan Davis", fixedShiftId: "us" },
+            { id: "6", name: "Fiona Garcia" },
+        ],
+        shifts: [
+            { id: "apac", name: "APAC", startTime: "01:00", endTime: "09:00", color: "bg-blue-200" },
+            { id: "emea", name: "EMEA", startTime: "08:00", endTime: "16:00", color: "bg-amber-200" },
+            { id: "us", name: "US", startTime: "15:00", endTime: "23:00", color: "bg-indigo-200" },
+            { id: "late_emea", name: "LATE EMEA", startTime: "12:00", endTime: "20:00", color: "bg-emerald-200" },
+        ],
+        generationHistory: [initialGeneration],
+        activeGenerationId: initialGeneration.id,
+    }
+}
+
+
+const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: RotaGeneration[]): ShiftStreak => {
+    const streaks: ShiftStreak = {};
+    teamMembers.forEach(member => {
+        streaks[member.id] = { shiftId: '', count: 0 };
+    });
+
+    // Iterate backwards through history
+    for (let i = generationHistory.length - 1; i >= 0; i--) {
+        const generation = generationHistory[i];
+        for (const member of teamMembers) {
+            const shiftId = generation.assignments[member.id];
+            if (shiftId) {
+                // If we are starting the count for this member
+                if (streaks[member.id].count === i - generationHistory.length +1 ) {
+                    if (streaks[member.id].shiftId === '' || streaks[member.id].shiftId === shiftId) {
+                       streaks[member.id].shiftId = shiftId;
+                       streaks[member.id].count++;
+                    }
+                }
+            }
+        }
+    }
+    return streaks;
+};
 
 export const useRotaStore = create<AppState>()(
   persist(
     (set, get) => ({
-      teamMembers: [
-        { id: "1", name: "Alice Johnson" },
-        { id: "2", name: "Bob Williams" },
-        { id: "3", name: "Charlie Brown" },
-        { id: "4", name: "Diana Miller" },
-        { id: "5", name: "Ethan Davis", fixedShiftId: "us" },
-        { id: "6", name: "Fiona Garcia" },
-      ],
-      shifts: [
-        { id: "apac", name: "APAC", startTime: "01:00", endTime: "09:00", color: "bg-blue-200" },
-        { id: "emea", name: "EMEA", startTime: "08:00", endTime: "16:00", color: "bg-amber-200" },
-        { id: "us", name: "US", startTime: "15:00", endTime: "23:00", color: "bg-indigo-200" },
-        { id: "late_emea", name: "LATE EMEA", startTime: "12:00", endTime: "20:00", color: "bg-emerald-200" },
-      ],
-      rota: {},
-      startDate: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
+      ...getInitialState(),
 
       addTeamMember: (name, fixedShiftId) =>
         set((state) => ({
@@ -42,16 +79,15 @@ export const useRotaStore = create<AppState>()(
 
       deleteTeamMember: (id) =>
         set((state) => {
-          const newRota = { ...state.rota };
-          // This simplified logic assumes we just need to remove the member,
-          // a full regeneration might be needed in a real app.
-          Object.keys(newRota).forEach(date => {
-            delete newRota[date][id];
-          });
-          return {
-            teamMembers: state.teamMembers.filter((member) => member.id !== id),
-            rota: newRota,
-          };
+            const newHistory = state.generationHistory.map(gen => {
+                const newAssignments = {...gen.assignments};
+                delete newAssignments[id];
+                return {...gen, assignments: newAssignments};
+            });
+            return {
+                teamMembers: state.teamMembers.filter((member) => member.id !== id),
+                generationHistory: newHistory,
+            };
         }),
 
       updateShift: (id, newShift) =>
@@ -61,81 +97,101 @@ export const useRotaStore = create<AppState>()(
           ),
         })),
         
-      setRota: (newRota, newStartDate) => set(state => ({
-        rota: newRota,
-        startDate: newStartDate || state.startDate,
-      })),
+      generateNewRota: (isNextPeriod = false) => {
+        set(state => {
+            const { teamMembers, shifts, generationHistory, activeGenerationId } = state;
+            
+            const lastGeneration = generationHistory[generationHistory.length - 1];
+            const currentStartDate = lastGeneration ? lastGeneration.startDate : startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
+            
+            const newStartDate = isNextPeriod
+              ? format(addDays(parseISO(currentStartDate), 14), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+              : startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
 
-      generateRota: () => {
-        const { teamMembers, shifts, startDate } = get();
-        const newRota = generateNewRota(teamMembers, shifts, startDate);
-        set({ rota: newRota });
+            const shiftStreaks = calculateShiftStreaks(teamMembers, generationHistory);
+
+            const newAssignments = generateNewRotaAssignments(teamMembers, shifts, shiftStreaks);
+            
+            const newGeneration: RotaGeneration = {
+                id: new Date().getTime().toString(),
+                startDate: newStartDate,
+                assignments: newAssignments
+            };
+
+            const newHistory = [...generationHistory, newGeneration];
+
+            return { 
+                generationHistory: newHistory,
+                activeGenerationId: newGeneration.id 
+            };
+        });
       },
 
       swapShifts: (memberId1, memberId2) => {
         set(state => {
-          const newRota = JSON.parse(JSON.stringify(state.rota));
-          const { startDate } = state;
-      
-          const member1 = state.teamMembers.find(m => m.id === memberId1);
-          const member2 = state.teamMembers.find(m => m.id === memberId2);
-      
-          if (member1?.fixedShiftId || member2?.fixedShiftId) {
-            console.warn("Cannot swap shifts for members with fixed assignments.");
-            return state;
-          }
-      
-          // Iterate over all dates in the rota and swap
-          for (const date in newRota) {
-            const shift1 = newRota[date][memberId1];
-            const shift2 = newRota[date][memberId2];
+          const { activeGenerationId, generationHistory } = state;
+          if (!activeGenerationId) return state;
 
-            if (shift2 !== undefined) {
-              newRota[date][memberId1] = shift2;
-            } else {
-              delete newRota[date][memberId1];
-            }
+          const newHistory = generationHistory.map(gen => {
+              if (gen.id === activeGenerationId) {
+                  const newAssignments = JSON.parse(JSON.stringify(gen.assignments));
+                  const shift1 = newAssignments[memberId1];
+                  const shift2 = newAssignments[memberId2];
 
-            if (shift1 !== undefined) {
-              newRota[date][memberId2] = shift1;
-            } else {
-              delete newRota[date][memberId2];
+                  if (shift2 !== undefined) newAssignments[memberId1] = shift2;
+                  else delete newAssignments[memberId1];
+
+                  if (shift1 !== undefined) newAssignments[memberId2] = shift1;
+                  else delete newAssignments[memberId2];
+                  
+                  return {...gen, assignments: newAssignments};
+              }
+              return gen;
+          });
+
+          return { generationHistory: newHistory };
+        });
+      },
+      
+      deleteGeneration: (generationId: string) => {
+        set(state => {
+            const newHistory = state.generationHistory.filter(g => g.id !== generationId);
+            let newActiveId = state.activeGenerationId;
+            if (state.activeGenerationId === generationId) {
+                newActiveId = newHistory.length > 0 ? newHistory[newHistory.length - 1].id : null;
             }
-          }
-          return { rota: newRota };
+            return {
+                generationHistory: newHistory,
+                activeGenerationId: newActiveId,
+            }
         });
       },
 
-      cloneRota: () => {
-        set(state => {
-          const { teamMembers, shifts, startDate } = state;
-          // generateNextRota now creates a fresh random rota for the next period
-          const { newRota, newStartDate } = generateNextRota(teamMembers, shifts, startDate);
-          
-          return { 
-            rota: newRota, 
-            startDate: newStartDate
-          };
-        });
-      }
+      setActiveGenerationId: (generationId: string | null) => {
+          set({ activeGenerationId: generationId });
+      },
 
     }),
     {
       name: "rotapro-storage",
       storage: createJSONStorage(() => localStorage),
-      // This function runs on rehydration
-      onRehydrateStorage: () => (state) => {
+       onRehydrateStorage: () => (state) => {
         if (state) {
-          const today = startOfWeek(new Date(), { weekStartsOn: 1 });
-          const rotaStartDate = state.startDate ? startOfWeek(new Date(state.startDate), { weekStartsOn: 1 }) : new Date(0);
-
-          // If the stored rota is from a past period, or is empty, generate a new one.
-          if (rotaStartDate.getTime() < today.getTime() || Object.keys(state.rota).length === 0) {
-            const newStartDate = today.toISOString();
-            const newRota = generateNewRota(state.teamMembers, state.shifts, newStartDate);
-            state.startDate = newStartDate;
-            state.rota = newRota;
-          }
+            const initialData = getInitialState();
+            if (state.generationHistory.length === 0 || !state.activeGenerationId) {
+                const newAssignments = generateNewRotaAssignments(state.teamMembers, state.shifts, {});
+                const newGeneration: RotaGeneration = {
+                    ...initialData.generationHistory[0],
+                    assignments: newAssignments
+                };
+                state.generationHistory = [newGeneration];
+                state.activeGenerationId = newGeneration.id;
+            } else {
+                 const activeGen = state.generationHistory.find(g => g.id === state.activeGenerationId);
+                 if (!activeGen) {
+                     state.activeGenerationId = state.generationHistory[state.generationHistory.length - 1].id;
+                 }
+            }
         }
       }
     }
@@ -147,8 +203,8 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     updateTeamMember: state.updateTeamMember,
     deleteTeamMember: state.deleteTeamMember,
     updateShift: state.updateShift,
-    setRota: state.setRota,
-    generateRota: state.generateRota,
+    generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,
-    cloneRota: state.cloneRota,
+    deleteGeneration: state.deleteGeneration,
+    setActiveGenerationId: state.setActiveGenerationId
 }));

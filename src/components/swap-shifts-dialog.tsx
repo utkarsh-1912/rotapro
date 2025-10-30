@@ -69,7 +69,7 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
     swapShifts(values.memberId1, values.memberId2);
     toast({
       title: "Shifts Swapped",
-      description: `The shifts for ${member1?.name} and ${member2?.name} have been swapped for the current 14-day period.`,
+      description: `The shifts for ${member1?.name} and ${member2?.name} have been swapped for the active rota period.`,
     });
     onOpenChange(false);
     form.reset();
@@ -87,9 +87,9 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Swap Full Rota Period</DialogTitle>
+          <DialogTitle>Swap Rota Period</DialogTitle>
           <DialogDescription>
-            Select two team members to swap their assigned shifts for the entire 14-day period. Members with fixed shifts cannot be swapped.
+            Select two members to swap their assigned shifts for the entire active 14-day period. Members with fixed shifts cannot be swapped.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

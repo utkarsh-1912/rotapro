@@ -12,21 +12,30 @@ export interface Shift {
   color: string;
 }
 
-// Rota is stored as a Record mapping date strings (YYYY-MM-DD) to assignments
 // Assignments map a team member's ID to a shift ID
-export type Rota = Record<string, Record<string, string | undefined>>;
+export type RotaAssignments = Record<string, string | undefined>;
+
+// A single generated rota period
+export interface RotaGeneration {
+  id: string; // Unique ID for this generation, e.g., a timestamp
+  startDate: string; // ISO string for the start of this period
+  assignments: RotaAssignments;
+}
+
+// Tracks how many consecutive periods a member has had the same shift
+export type ShiftStreak = Record<string, { shiftId: string; count: number }>;
 
 export interface AppState {
   teamMembers: TeamMember[];
   shifts: Shift[];
-  rota: Rota;
-  startDate: string; // ISO string
+  generationHistory: RotaGeneration[];
+  activeGenerationId: string | null;
   addTeamMember: (name: string, fixedShiftId?: string) => void;
   updateTeamMember: (id: string, updates: Partial<Pick<TeamMember, 'name' | 'fixedShiftId'>>) => void;
   deleteTeamMember: (id: string) => void;
   updateShift: (id: string, newShift: Partial<Shift>) => void;
-  setRota: (newRota: Rota, newStartDate?: string) => void;
-  generateRota: () => void;
+  generateNewRota: (isNextPeriod?: boolean) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
-  cloneRota: () => void;
+  deleteGeneration: (generationId: string) => void;
+  setActiveGenerationId: (generationId: string | null) => void;
 }
