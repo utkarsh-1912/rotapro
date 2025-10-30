@@ -47,7 +47,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="px-4 sm:px-6 lg:px-8 flex h-14 items-center">
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2">
                <Logo />
@@ -69,7 +69,7 @@ export default function LandingPage() {
 
       <main>
         <section className="py-20 md:py-32">
-          <div className="container text-center">
+          <div className="px-4 sm:px-6 lg:px-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -78,7 +78,7 @@ export default function LandingPage() {
               <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
                 The Future of Team Scheduling is Here
               </h1>
-              <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
+              <p className="mt-4 max-w-3xl mx-auto text-lg text-muted-foreground">
                 RotaPro simplifies complex scheduling. Generate fair, optimized rotas, manage your team, and keep everyone in sync—effortlessly.
               </p>
               <div className="mt-8 flex justify-center gap-4">
@@ -94,12 +94,12 @@ export default function LandingPage() {
         </section>
 
         <section className="py-20 md:py-32 bg-secondary">
-          <div className="container">
-            <div className="text-center mb-12">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 max-w-2xl mx-auto">
               <h2 className="text-3xl font-bold">Why RotaPro?</h2>
               <p className="mt-2 text-muted-foreground">Everything you need for efficient shift management.</p>
             </div>
-            <div className="grid gap-8 md:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-3 max-w-7xl mx-auto">
               {features.map((feature, i) => (
                 <motion.div
                   key={feature.title}
@@ -122,8 +122,8 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="py-6 md:px-8 md:py-0 border-t">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <footer className="py-6 border-t">
+        <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
           <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
             Built by Your AI Assistant.
           </p>
