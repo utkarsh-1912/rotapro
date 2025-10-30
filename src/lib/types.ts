@@ -4,6 +4,7 @@ export interface TeamMember {
   id: string;
   name: string;
   fixedShiftId?: string;
+  lastShiftId?: string;
 }
 
 export interface Shift {
@@ -12,6 +13,10 @@ export interface Shift {
   startTime: string;
   endTime: string;
   color: string;
+  sequence: number;
+  isExtreme: boolean;
+  minTeam: number;
+  maxTeam: number;
 }
 
 // Assignments map a team member's ID to a shift ID
@@ -38,6 +43,7 @@ export interface AppState {
   deleteTeamMember: (id: string) => void;
   addShift: (newShift: Omit<Shift, 'id' | 'color'>) => void;
   updateShift: (id: string, newShift: Partial<Omit<Shift, 'id' | 'color'>>) => void;
+  updateAssignment: (memberId: string, shiftId: string) => void;
   generateNewRota: (startDate: Date) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;

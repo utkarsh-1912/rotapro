@@ -10,128 +10,145 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-const SHIFT_ORDER: string[] = ['us', 'emea', 'apac', 'late_emea'];
+const isTransitionAllowed = (fromShift: Shift | undefined, toShift: Shift): boolean => {
+    if (!fromShift) return true; // No previous shift, any transition is fine
+    if (fromShift.isExtreme && toShift.isExtreme) return false;
+    return true;
+};
 
-const getNextShiftId = (currentShiftId: string | null): string => {
-  if (!currentShiftId) return SHIFT_ORDER[0];
-  const currentIndex = SHIFT_ORDER.indexOf(currentShiftId);
-  if (currentIndex === -1) return SHIFT_ORDER[0]; // Fallback
-  const nextIndex = (currentIndex + 1) % SHIFT_ORDER.length;
-  return SHIFT_ORDER[nextIndex];
+const getNextShift = (currentShiftId: string, shifts: Shift[]): Shift => {
+    const sortedShifts = [...shifts].sort((a, b) => a.sequence - b.sequence);
+    const currentShift = sortedShifts.find(s => s.id === currentShiftId);
+    const currentIndex = currentShift ? sortedShifts.indexOf(currentShift) : -1;
+    const nextIndex = (currentIndex + 1) % sortedShifts.length;
+    return sortedShifts[nextIndex];
 }
 
 export const generateNewRotaAssignments = (
   teamMembers: TeamMember[],
-  shifts: Shift[],
+  allShifts: Shift[],
   shiftStreaks: ShiftStreak
 ): RotaAssignments => {
   const assignments: RotaAssignments = {};
+  const shiftMap = new Map(allShifts.map(s => [s.id, s]));
+  const sortedShifts = [...allShifts].sort((a, b) => a.sequence - b.sequence);
+
   let availableMembers = teamMembers.filter(m => !m.fixedShiftId);
-  
+  const assignedCounts: Record<string, number> = {};
+  allShifts.forEach(s => assignedCounts[s.id] = 0);
+
   // 1. Assign fixed shifts
   teamMembers.filter(m => m.fixedShiftId).forEach(member => {
     assignments[member.id] = member.fixedShiftId!;
+    assignedCounts[member.fixedShiftId!]++;
   });
 
-  // 2. Force rotation for members who have reached their streak limit
+  // 2. Force rotation for members who have reached their streak limit (max 2)
   const membersToRotate = availableMembers.filter(m => {
     const streak = shiftStreaks[m.id];
-    if (!streak || !streak.shiftId) return false;
-    
-    // US/APAC rule: rotate after 1 period
-    if ((streak.shiftId === 'apac' || streak.shiftId === 'us') && streak.count >= 1) {
-      return true;
-    }
-    // Other shifts rule: rotate after 2 periods
-    if (streak.count >= 2) {
-      return true;
-    }
-    return false;
+    return streak && streak.count >= 2;
   });
 
   membersToRotate.forEach(member => {
-    const lastShiftId = shiftStreaks[member.id].shiftId;
-    let nextShiftId = getNextShiftId(lastShiftId);
-
-    // New Rule: Prevent APAC -> US
-    if (lastShiftId === 'apac' && nextShiftId === 'us') {
-      nextShiftId = getNextShiftId(nextShiftId); // Skip US and go to the next one (EMEA)
+    const lastShiftId = shiftStreaks[member.id].shiftId!;
+    let nextShift = getNextShift(lastShiftId, allShifts);
+    
+    // Ensure transition is allowed
+    let attempts = 0;
+    while (!isTransitionAllowed(shiftMap.get(lastShiftId), nextShift) && attempts < sortedShifts.length) {
+        nextShift = getNextShift(nextShift.id, allShifts);
+        attempts++;
     }
 
-    assignments[member.id] = nextShiftId;
+    // Try to assign to a shift that needs people
+    let assigned = false;
+    for (let i = 0; i < sortedShifts.length; i++) {
+        const potentialShift = getNextShift(nextShift.id, sortedShifts);
+        if (isTransitionAllowed(shiftMap.get(lastShiftId), potentialShift) && assignedCounts[potentialShift.id] < potentialShift.maxTeam) {
+            assignments[member.id] = potentialShift.id;
+            assignedCounts[potentialShift.id]++;
+            assigned = true;
+            break;
+        }
+    }
+    
+    // Fallback if no ideal spot found
+    if (!assigned) {
+        assignments[member.id] = nextShift.id;
+        assignedCounts[nextShift.id]++;
+    }
   });
-
+  
   availableMembers = availableMembers.filter(m => !assignments[m.id]);
 
   // 3. Try to continue streaks for those not forced to rotate
   const membersToContinue = availableMembers.filter(m => {
     const streak = shiftStreaks[m.id];
-    return streak && streak.shiftId && streak.count > 0;
+    return streak && streak.shiftId && assignedCounts[streak.shiftId] < shiftMap.get(streak.shiftId)!.maxTeam;
   });
 
   membersToContinue.forEach(member => {
-      const currentShiftId = shiftStreaks[member.id].shiftId!;
-      assignments[member.id] = currentShiftId;
+    const currentShiftId = shiftStreaks[member.id].shiftId!;
+    assignments[member.id] = currentShiftId;
+    assignedCounts[currentShiftId]++;
   });
 
   availableMembers = availableMembers.filter(m => !assignments[m.id]);
-
-  // 4. Fill remaining required shifts from the rest of the pool
-  const unassignedShifts: string[] = [];
-  const assignedCounts = Object.values(assignments).reduce((acc, shiftId) => {
-      if(shiftId) acc[shiftId] = (acc[shiftId] || 0) + 1;
-      return acc;
-  }, {} as Record<string, number>);
-
-  if ((assignedCounts['apac'] || 0) < 1) unassignedShifts.push('apac');
-  if ((assignedCounts['us'] || 0) < 1) unassignedShifts.push('us');
-  if ((assignedCounts['emea'] || 0) < 1) unassignedShifts.push('emea');
   
   shuffle(availableMembers);
 
-  unassignedShifts.forEach(shiftId => {
-      // Find a member who can take this shift
-      const memberIndex = availableMembers.findIndex(member => {
-          const lastShiftId = shiftStreaks[member.id]?.shiftId;
-          // New Rule: Prevent APAC -> US transition
-          if (shiftId === 'us' && lastShiftId === 'apac') {
-              return false;
-          }
-          return true;
-      });
+  // 4. Fill remaining shifts respecting min/max and rules
+  sortedShifts.forEach(shift => {
+    while (assignedCounts[shift.id] < shift.minTeam) {
+        const memberToAssign = availableMembers.find(m => 
+            isTransitionAllowed(shiftMap.get(m.lastShiftId || ''), shift)
+        );
 
-      if (memberIndex !== -1) {
-          const member = availableMembers.splice(memberIndex, 1)[0];
-          assignments[member.id] = shiftId;
-      }
+        if (memberToAssign) {
+            assignments[memberToAssign.id] = shift.id;
+            assignedCounts[shift.id]++;
+            availableMembers = availableMembers.filter(m => m.id !== memberToAssign.id);
+        } else {
+            break; // No suitable members left for this shift
+        }
+    }
   });
-  
-  availableMembers = availableMembers.filter(m => !assignments[m.id]);
 
-  // 5. Assign all remaining to LATE EMEA
+  // 5. Assign any remaining members to shifts that are not full
   availableMembers.forEach(member => {
-      assignments[member.id] = 'late_emea';
+    const lastShift = shiftMap.get(member.lastShiftId || '');
+    let assigned = false;
+    // Try to assign sequentially
+    for (const shift of sortedShifts) {
+        if (assignedCounts[shift.id] < shift.maxTeam && isTransitionAllowed(lastShift, shift)) {
+            assignments[member.id] = shift.id;
+            assignedCounts[shift.id]++;
+            assigned = true;
+            break;
+        }
+    }
+    // Fallback: assign to the first available non-full shift, ignoring transition rules if necessary
+    if (!assigned) {
+        for (const shift of sortedShifts) {
+            if (assignedCounts[shift.id] < shift.maxTeam) {
+                assignments[member.id] = shift.id;
+                assignedCounts[shift.id]++;
+                break;
+            }
+        }
+    }
   });
 
-  // 6. Final check: If minimums are still not met (e.g. due to APAC->US rule), pull from LATE EMEA
-  ['apac', 'us', 'emea'].forEach(shiftId => {
-    const currentCount = Object.values(assignments).filter(s => s === shiftId).length;
-    if (currentCount < 1) {
-      // Find a member on LATE EMEA to move, respecting all rules
-      const memberToMoveId = Object.keys(assignments).find(id => {
-          if (assignments[id] !== 'late_emea') return false;
-          
-          const member = teamMembers.find(m => m.id === id);
-          if (member?.fixedShiftId) return false;
-
-          const lastShiftId = shiftStreaks[id]?.shiftId;
-          if (shiftId === 'us' && lastShiftId === 'apac') return false;
-
-          return true;
-      });
-
-      if (memberToMoveId) {
-        assignments[memberToMoveId] = shiftId;
+  // Final check to ensure all members are assigned
+  teamMembers.forEach(member => {
+    if (!assignments[member.id]) {
+      const fallbackShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam) || sortedShifts[0];
+      if (fallbackShift) {
+        assignments[member.id] = fallbackShift.id;
+        assignedCounts[fallbackShift.id]++;
+      } else {
+        // This should not happen if maxTeam is configured properly
+        assignments[member.id] = "Not Assigned";
       }
     }
   });

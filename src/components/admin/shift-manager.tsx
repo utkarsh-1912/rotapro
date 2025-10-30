@@ -29,31 +29,57 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "../ui/checkbox";
+import { Badge } from "../ui/badge";
 
 const shiftSchema = z.object({
   name: z.string().min(1, "Shift name is required"),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)"),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)"),
+  sequence: z.coerce.number().int().min(1, "Sequence must be at least 1"),
+  isExtreme: z.boolean(),
+  minTeam: z.coerce.number().int().min(0, "Min team must be non-negative"),
+  maxTeam: z.coerce.number().int().min(1, "Max team must be at least 1"),
+}).refine(data => data.maxTeam >= data.minTeam, {
+    message: "Max team must be greater than or equal to min team.",
+    path: ["maxTeam"],
 });
 
-function AddShiftForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-    const { addShift } = useRotaStoreActions();
+function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean) => void }) {
+    const { addShift, updateShift } = useRotaStoreActions();
     const { toast } = useToast();
+    const isEditMode = !!shift;
+
     const form = useForm<z.infer<typeof shiftSchema>>({
         resolver: zodResolver(shiftSchema),
-        defaultValues: {
+        defaultValues: isEditMode ? {
+            ...shift,
+        } : {
             name: "",
             startTime: "09:00",
             endTime: "17:00",
+            sequence: 1,
+            isExtreme: false,
+            minTeam: 1,
+            maxTeam: 1,
         },
     });
 
     function onSubmit(values: z.infer<typeof shiftSchema>) {
-        addShift(values);
-        toast({
-            title: "Shift Added",
-            description: `The ${values.name} shift has been added.`,
-        });
+        if (isEditMode) {
+            updateShift(shift.id, values);
+            toast({
+                title: "Shift Updated",
+                description: `The ${values.name} shift has been updated.`,
+            });
+        } else {
+            addShift(values);
+            toast({
+                title: "Shift Added",
+                description: `The ${values.name} shift has been added.`,
+            });
+        }
+        
         setOpen(false);
         form.reset();
     }
@@ -62,17 +88,17 @@ function AddShiftForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <DialogHeader>
-                    <DialogTitle>Add New Shift</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'Edit Shift' : 'Add New Shift'}</DialogTitle>
                     <DialogDescription>
-                        Enter the details for the new shift.
+                        {isEditMode ? `Update the details for the ${shift.name} shift.` : 'Enter the details for the new shift.'}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4 py-4">
                     <FormField
                         control={form.control}
                         name="name"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="col-span-2">
                                 <FormLabel>Shift Name</FormLabel>
                                 <FormControl>
                                     <Input placeholder="e.g. Night Shift" {...field} />
@@ -107,99 +133,75 @@ function AddShiftForm({ setOpen }: { setOpen: (open: boolean) => void }) {
                             </FormItem>
                         )}
                     />
+                     <FormField
+                        control={form.control}
+                        name="sequence"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Sequence</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="isExtreme"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                               <FormControl>
+                                    <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>
+                                        Extreme Shift
+                                    </FormLabel>
+                                    <FormMessage />
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="minTeam"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Min Members</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="maxTeam"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Max Members</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                     </Button>
-                    <Button type="submit">Add Shift</Button>
+                    <Button type="submit">{isEditMode ? 'Save Changes' : 'Add Shift'}</Button>
                 </DialogFooter>
             </form>
         </Form>
     );
-}
-
-function EditShiftForm({ shift, setOpen }: { shift: Shift; setOpen: (open: boolean) => void }) {
-  const { updateShift } = useRotaStoreActions();
-  const { toast } = useToast();
-
-  const form = useForm<z.infer<typeof shiftSchema>>({
-    resolver: zodResolver(shiftSchema),
-    defaultValues: {
-      name: shift.name,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-    },
-  });
-
-  function onSubmit(values: z.infer<typeof shiftSchema>) {
-    updateShift(shift.id, values);
-    toast({
-      title: "Shift Updated",
-      description: `The ${shift.name} shift has been updated.`,
-    });
-    setOpen(false);
-  }
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <DialogHeader>
-          <DialogTitle>Edit Shift: {shift.name}</DialogTitle>
-          <DialogDescription>
-            Adjust the start and end times for this shift.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Shift Name</FormLabel>
-                    <FormControl>
-                        <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-           />
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start Time</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>End Time</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit">Save Changes</Button>
-        </DialogFooter>
-      </form>
-    </Form>
-  );
 }
 
 export function ShiftManager() {
@@ -209,6 +211,8 @@ export function ShiftManager() {
   const setOpen = (id: string, open: boolean) => {
     setOpenDialogs(prev => ({ ...prev, [id]: open }));
   };
+  
+  const sortedShifts = React.useMemo(() => [...shifts].sort((a,b) => a.sequence - b.sequence), [shifts]);
 
   return (
     <Card>
@@ -216,15 +220,15 @@ export function ShiftManager() {
         <div>
             <CardTitle>Shift Management</CardTitle>
             <CardDescription>
-            View, edit, and create the available shifts and their hours.
+            View, edit, and create the available shifts and their properties.
             </CardDescription>
         </div>
          <Dialog open={openDialogs['new-shift'] || false} onOpenChange={(isOpen) => setOpen('new-shift', isOpen)}>
             <DialogTrigger asChild>
                 <Button><Plus /> Add Shift</Button>
             </DialogTrigger>
-            <DialogContent>
-                <AddShiftForm setOpen={(isOpen) => setOpen('new-shift', isOpen)} />
+            <DialogContent className="max-w-md">
+                <ShiftForm setOpen={(isOpen) => setOpen('new-shift', isOpen)} />
             </DialogContent>
         </Dialog>
       </CardHeader>
@@ -232,18 +236,24 @@ export function ShiftManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Shift Name</TableHead>
-              <TableHead>Start Time</TableHead>
-              <TableHead>End Time</TableHead>
+              <TableHead>Seq.</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Team Size</TableHead>
+              <TableHead>Extreme</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {shifts.map((shift) => (
+            {sortedShifts.map((shift) => (
               <TableRow key={shift.id}>
+                <TableCell className="font-mono">{shift.sequence}</TableCell>
                 <TableCell className="font-medium">{shift.name}</TableCell>
-                <TableCell>{shift.startTime}</TableCell>
-                <TableCell>{shift.endTime}</TableCell>
+                <TableCell>{shift.startTime} - {shift.endTime}</TableCell>
+                <TableCell className="font-mono">{shift.minTeam} - {shift.maxTeam}</TableCell>
+                <TableCell>
+                  {shift.isExtreme && <Badge variant="destructive">Yes</Badge>}
+                </TableCell>
                 <TableCell className="text-right">
                    <Dialog open={openDialogs[shift.id] || false} onOpenChange={(isOpen) => setOpen(shift.id, isOpen)}>
                     <DialogTrigger asChild>
@@ -252,8 +262,8 @@ export function ShiftManager() {
                         <span className="sr-only">Edit Shift</span>
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
-                      <EditShiftForm shift={shift} setOpen={(isOpen) => setOpen(shift.id, isOpen)} />
+                    <DialogContent className="max-w-md">
+                      <ShiftForm shift={shift} setOpen={(isOpen) => setOpen(shift.id, isOpen)} />
                     </DialogContent>
                   </Dialog>
                 </TableCell>
@@ -261,7 +271,7 @@ export function ShiftManager() {
             ))}
              {shifts.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                         No shifts defined.
                     </TableCell>
                 </TableRow>

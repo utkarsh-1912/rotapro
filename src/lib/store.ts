@@ -18,10 +18,10 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
     return {
         teamMembers: [],
         shifts: [
-          { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'bg-blue-200' },
-          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'bg-amber-200' },
-          { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'bg-indigo-200' },
-          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'bg-emerald-200' }
+          { id: 'apac', name: 'APAC', startTime: '04:00', endTime: '14:00', color: 'bg-blue-200', sequence: 1, isExtreme: true, minTeam: 1, maxTeam: 10 },
+          { id: 'emea', name: 'EMEA', startTime: '13:00', endTime: '23:00', color: 'bg-amber-200', sequence: 2, isExtreme: false, minTeam: 1, maxTeam: 10 },
+          { id: 'us', name: 'US', startTime: '18:00', endTime: '04:00', color: 'bg-indigo-200', sequence: 3, isExtreme: true, minTeam: 1, maxTeam: 10 },
+          { id: 'late_emea', name: 'LATE EMEA', startTime: '15:00', endTime: '01:00', color: 'bg-emerald-200', sequence: 4, isExtreme: false, minTeam: 1, maxTeam: 10 }
         ],
         generationHistory: [],
         activeGenerationId: null,
@@ -93,9 +93,7 @@ export const useRotaStore = create<AppState>()(
         set((state) => {
           const newShift: Shift = {
             id: new Date().getTime().toString(),
-            name: newShiftData.name,
-            startTime: newShiftData.startTime,
-            endTime: newShiftData.endTime,
+            ...newShiftData,
             color: SHIFT_COLORS[state.shifts.length % SHIFT_COLORS.length],
           };
           return {
@@ -109,12 +107,37 @@ export const useRotaStore = create<AppState>()(
             shift.id === id ? { ...shift, ...newShift } : shift
           ),
         })),
+
+      updateAssignment: (memberId, shiftId) => set(state => {
+        const { activeGenerationId, generationHistory } = state;
+        if (!activeGenerationId) return state;
+
+        const newHistory = generationHistory.map(gen => {
+          if (gen.id === activeGenerationId) {
+            const newAssignments = { ...gen.assignments };
+            newAssignments[memberId] = shiftId;
+            return { ...gen, assignments: newAssignments };
+          }
+          return gen;
+        });
+
+        return { generationHistory: newHistory };
+      }),
         
       generateNewRota: (startDate: Date) => {
         set(state => {
-            const { teamMembers, shifts, generationHistory } = state;
+            let { teamMembers, shifts, generationHistory } = state;
             
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
+
+            // Update lastShiftId for each member based on the most recent generation
+            if (generationHistory.length > 0) {
+              const latestGeneration = [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime())[0];
+              teamMembers = teamMembers.map(m => ({
+                ...m,
+                lastShiftId: latestGeneration.assignments[m.id],
+              }));
+            }
 
             const shiftStreaks = calculateShiftStreaks(teamMembers, generationHistory);
 
@@ -206,5 +229,6 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,
     deleteGeneration: state.deleteGeneration,
-    setActiveGenerationId: state.setActiveGenerationId
+    setActiveGenerationId: state.setActiveGenerationId,
+    updateAssignment: state.updateAssignment
 }));
