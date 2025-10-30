@@ -4,28 +4,31 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format, startOfWeek, isSameDay } from 'date-fns';
-import { useRotaStore, useRotaStoreActions } from '@/lib/store';
+import { format, startOfWeek, addDays, areIntervalsOverlapping } from 'date-fns';
+import { useRotaStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { isMonday } from 'date-fns';
 
 export function RotaGenerationDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+    const { generationHistory, generateNewRota } = useRotaStore();
     const [date, setDate] = React.useState<Date | undefined>(startOfWeek(new Date(), { weekStartsOn: 1 }));
-    const { generationHistory } = useRotaStore();
-    const { generateNewRota } = useRotaStoreActions();
     const { toast } = useToast();
 
     const handleGenerate = () => {
         if (date) {
-            const weekAlreadyExists = generationHistory.some(gen => 
-                isSameDay(new Date(gen.startDate), date)
+            const newInterval = { start: date, end: addDays(date, 13) };
+            const overlappingGeneration = generationHistory.find(gen => 
+                areIntervalsOverlapping(
+                    newInterval,
+                    { start: new Date(gen.startDate), end: addDays(new Date(gen.startDate), 13) }
+                )
             );
 
-            if (weekAlreadyExists) {
+            if (overlappingGeneration) {
                 toast({
                     variant: "destructive",
                     title: "Generation Failed",
-                    description: "A rota for this week already exists. Please select a different date.",
+                    description: `The selected date range overlaps with an existing rota starting on ${format(new Date(overlappingGeneration.startDate), 'PPP')}.`,
                 });
                 return;
             }
