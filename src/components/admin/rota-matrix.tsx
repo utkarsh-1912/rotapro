@@ -5,15 +5,19 @@ import React from "react";
 import { useRotaStore } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
-import { Recycle } from "lucide-react";
+import { Recycle, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { Button } from "../ui/button";
+import { downloadCsv } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function RotaMatrix() {
     const { teamMembers, generationHistory, shifts } = useRotaStore();
     const [currentPage, setCurrentPage] = React.useState(0);
+    const { toast } = useToast();
     const itemsPerPage = 5;
     
     const sortedHistory = React.useMemo(() =>
@@ -29,14 +33,60 @@ export function RotaMatrix() {
 
     const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
     
+    const handleExport = () => {
+        if (generationHistory.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Export Failed",
+                description: "There is no rota history to export.",
+            });
+            return;
+        }
+
+        const header = ["Member", ...sortedHistory.map(gen => {
+            const startDate = parseISO(gen.startDate);
+            const endDate = addDays(startDate, 13);
+            return `${format(startDate, 'd MMM')} - ${format(endDate, 'd MMM yyyy')}`;
+        })];
+
+        const rows = teamMembers.map(member => {
+            const memberRow = [member.name];
+            sortedHistory.forEach(gen => {
+                const shiftId = gen.assignments[member.id];
+                const shift = shiftId ? shiftMap.get(shiftId) : null;
+                const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? true;
+
+                if (!wasMemberInTeam) {
+                    memberRow.push("Not in team");
+                } else if (shift) {
+                    memberRow.push(shift.name);
+                } else {
+                    memberRow.push("Off");
+                }
+            });
+            return memberRow;
+        });
+
+        downloadCsv([header, ...rows], "rota-matrix-history.csv");
+        toast({
+            title: "Export Successful",
+            description: "The complete rota matrix history has been downloaded as a CSV file.",
+        });
+    };
+    
     return (
         <TooltipProvider>
             <Card>
-                <CardHeader>
-                    <CardTitle>Rota Matrix</CardTitle>
-                    <CardDescription>
-                        Historical view of shift assignments for all team members across all rota periods.
-                    </CardDescription>
+                <CardHeader className="flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Rota Matrix</CardTitle>
+                        <CardDescription>
+                            Historical view of shift assignments for all team members across all rota periods.
+                        </CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={handleExport} disabled={generationHistory.length === 0}>
+                        <Download /> Export as CSV
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto rounded-lg border">
@@ -44,11 +94,15 @@ export function RotaMatrix() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
-                                    {paginatedHistory.map(gen => (
-                                        <TableHead key={gen.id} className="text-center font-semibold">
-                                            {format(parseISO(gen.startDate), 'd MMM yyyy')}
-                                        </TableHead>
-                                    ))}
+                                    {paginatedHistory.map(gen => {
+                                        const startDate = parseISO(gen.startDate);
+                                        const endDate = addDays(startDate, 13);
+                                        return (
+                                            <TableHead key={gen.id} className="text-center font-semibold whitespace-nowrap">
+                                                {format(startDate, 'd')} - {format(endDate, 'd MMM yyyy')}
+                                            </TableHead>
+                                        )
+                                    })}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -60,7 +114,6 @@ export function RotaMatrix() {
                                             const shift = assignmentId ? shiftMap.get(assignmentId) : null;
                                             const isOverridden = gen.manualOverrides?.includes(member.id);
                                             
-                                            // Check if the member existed at the time of generation
                                             const wasMemberInTeam = gen.teamMembersAtGeneration?.some(m => m.id === member.id) ?? true;
 
                                             if (!wasMemberInTeam) {
