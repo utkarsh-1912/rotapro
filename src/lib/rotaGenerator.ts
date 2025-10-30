@@ -38,11 +38,11 @@ export const generateNewRotaAssignments = (
     const streak = shiftStreaks[m.id];
     if (!streak || !streak.shiftId) return false;
     
-    // US/APAC rule: rotate after 1 period (2 weeks)
+    // US/APAC rule: rotate after 1 period
     if ((streak.shiftId === 'apac' || streak.shiftId === 'us') && streak.count >= 1) {
       return true;
     }
-    // Other shifts rule: rotate after 2 periods (4 weeks)
+    // Other shifts rule: rotate after 2 periods
     if (streak.count >= 2) {
       return true;
     }
