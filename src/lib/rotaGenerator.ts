@@ -10,6 +10,7 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
+// US -> EMEA -> APAC -> LATE EMEA -> US
 const SHIFT_ORDER: string[] = ['us', 'emea', 'apac', 'late_emea'];
 
 const getNextShiftId = (currentShiftId: string | null): string => {
@@ -41,10 +42,18 @@ export const generateNewRotaAssignments = (
     if(m.fixedShiftId) assignedShiftCounts[m.fixedShiftId]++;
   });
 
-  // 2. Members who MUST rotate (streak > 1, which means 4 weeks)
+  // 2. Members who MUST rotate
   const mustRotateMembers = rotatingMembers.filter(m => {
     const streak = shiftStreaks[m.id];
-    return streak && streak.count >= 2;
+    if (!streak || !streak.shiftId) return false;
+
+    // New rule: Force rotation from APAC or US after 1 period (2 weeks)
+    if ((streak.shiftId === 'apac' || streak.shiftId === 'us') && streak.count >= 1) {
+      return true;
+    }
+
+    // Original rule: Force rotation from any shift after 2 periods (4 weeks)
+    return streak.count >= 2;
   });
 
   mustRotateMembers.forEach(member => {
@@ -57,52 +66,64 @@ export const generateNewRotaAssignments = (
   // 3. Members who CAN rotate (not part of mustRotate)
   let remainingMembers = rotatingMembers.filter(m => !mustRotateMembers.some(mr => mr.id === m.id));
 
-  // 4. Assign based on constraints, respecting rotation order
+  // 4. Assign members who continue their current shift (if streak < 2, or < 1 for APAC/US)
+  const continuingMembers = remainingMembers.filter(m => {
+    const streak = shiftStreaks[m.id];
+    return streak && streak.shiftId && !assignments[m.id];
+  });
+  
+  continuingMembers.forEach(member => {
+    const currentShiftId = shiftStreaks[member.id].shiftId!;
+    assignments[member.id] = currentShiftId;
+    assignedShiftCounts[currentShiftId]++;
+  });
+  
+  remainingMembers = remainingMembers.filter(m => !continuingMembers.some(cm => cm.id === m.id));
+
+  // 5. Assign members starting a new rotation
+  remainingMembers.forEach(member => {
+    const nextShiftId = getNextShiftId(shiftStreaks[member.id]?.shiftId);
+    assignments[member.id] = nextShiftId;
+    assignedShiftCounts[nextShiftId]++;
+  });
+
+
+  // 6. Balance assignments to meet constraints (This is a fallback, ideal state is already met)
+  // This part is complex and might need a more sophisticated algorithm if the above logic fails.
+  // For now, we assume the rotation logic is the primary driver of assignments.
+  // The following is a simplified check/balance.
   const shiftsToFill: { shiftId: string, min: number, max: number }[] = [
     { shiftId: 'apac', min: 1, max: 1 },
     { shiftId: 'us', min: 1, max: 1 },
     { shiftId: 'emea', min: 1, max: 2 },
   ];
-
-  shiftsToFill.forEach(({ shiftId, min, max }) => {
-    let currentCount = assignedShiftCounts[shiftId] || 0;
-    
-    // Find members whose natural next shift is this one
-    const eligibleMembers = remainingMembers.filter(m => {
-      const lastShiftId = shiftStreaks[m.id]?.shiftId;
-      const nextShiftId = getNextShiftId(lastShiftId);
-      return nextShiftId === shiftId && !assignments[m.id];
-    });
-
-    const membersToAssign = shuffle(eligibleMembers).slice(0, max - currentCount);
-    
-    membersToAssign.forEach(member => {
-      assignments[member.id] = shiftId;
-      assignedShiftCounts[shiftId]++;
-      remainingMembers = remainingMembers.filter(m => m.id !== member.id);
-    });
-  });
-
-  // 5. Fill minimums if not met, from any remaining members
-  shiftsToFill.forEach(({ shiftId, min }) => {
-    let currentCount = assignedShiftCounts[shiftId] || 0;
-    if (currentCount < min) {
-      const membersToAssign = shuffle(remainingMembers).slice(0, min - currentCount);
-      membersToAssign.forEach(member => {
-        assignments[member.id] = shiftId;
-        assignedShiftCounts[shiftId]++;
-        remainingMembers = remainingMembers.filter(m => m.id !== member.id);
-      });
-    }
-  });
   
-  // 6. Assign all other remaining members to late_emea
-  shuffle(remainingMembers).forEach(member => {
-    if (!assignments[member.id]) {
-      assignments[member.id] = 'late_emea';
-      assignedShiftCounts['late_emea']++;
-    }
+  // This is a naive re-balancing and might not be perfect. A proper solver would be needed for complex cases.
+  // If a shift is over-assigned, try to move someone to a shift that is under-assigned.
+  shiftsToFill.forEach(({shiftId, max}) => {
+      if (assignedShiftCounts[shiftId] > max) {
+          const membersOnShift = Object.keys(assignments).filter(memberId => assignments[memberId] === shiftId && !teamMembers.find(m => m.id === memberId)?.fixedShiftId);
+          
+          const membersToMove = shuffle(membersOnShift).slice(0, assignedShiftCounts[shiftId] - max);
+
+          membersToMove.forEach(memberId => {
+              // Try to find an under-filled shift. 'late_emea' is the default catch-all.
+              const lateEmeaCount = assignedShiftCounts['late_emea'] || 0;
+              const emeaCount = assignedShiftCounts['emea'] || 0;
+              let targetShift = 'late_emea'; // Default fallback
+
+              const emeaShift = shiftsToFill.find(s => s.shiftId === 'emea');
+              if (emeaShift && emeaCount < emeaShift.max) {
+                targetShift = 'emea';
+              }
+              
+              assignments[memberId] = targetShift;
+              assignedShiftCounts[shiftId]--;
+              assignedShiftCounts[targetShift]++;
+          });
+      }
   });
+
 
   return assignments;
 };
