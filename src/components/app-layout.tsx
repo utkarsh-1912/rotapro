@@ -72,7 +72,7 @@ function ThemeToggle() {
     );
 }
 
-function AppHeaderContent() {
+function LoggedInHeaderContent() {
   const { user } = useAuthStore();
   const router = useRouter();
   const { state: sidebarState, isMobile } = useSidebar();
@@ -128,13 +128,82 @@ function AppHeaderContent() {
   );
 }
 
+function PublicHeaderContent() {
+    return (
+    <>
+        <div className="mr-4 flex items-center">
+            <Link href="/" className="flex items-center gap-2">
+               <Logo />
+               <span className="font-bold text-xl">RotaPro</span>
+            </Link>
+          </div>
+          <div className="flex flex-1 items-center justify-end space-x-2">
+            <nav className="flex items-center">
+              <Button asChild variant="ghost">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </nav>
+          </div>
+    </>
+    )
+}
+
+function PublicFooter() {
+    return (
+        <footer className="py-12 border-t">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="text-center md:text-left">
+                <p className="text-sm text-muted-foreground">
+                    &copy; {new Date().getFullYear()} RotaPro. All rights reserved.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    Build with <span className="text-blue-500">💙</span> by{' '}
+                    <a
+                    href="https://fi-xpert.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                    >
+                    FIXpert
+                    </a>
+                </p>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <Link href="/about" className="hover:text-primary transition-colors">About Us</Link>
+                <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
+                <Link href="/terms" className="hover:text-primary transition-colors">Terms & Privacy</Link>
+            </div>
+            </div>
+        </footer>
+    )
+}
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
   
-  if (!user) {
+  const isPublicPage = ["/", "/about", "/contact", "/terms", "/login", "/signup"].includes(pathname);
+
+  if (!user && !isPublicPage) {
+    // This is handled by AuthGate, but as a fallback
     return <>{children}</>;
+  }
+
+  if (!user || isPublicPage) {
+     return (
+        <div className="min-h-screen bg-background text-foreground">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-14 items-center">
+                   <PublicHeaderContent />
+                </div>
+            </header>
+            <div className="flex-1">{children}</div>
+            <PublicFooter />
+        </div>
+     )
   }
 
   return (
@@ -211,7 +280,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center justify-between gap-4 border-b bg-background/50 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
-            <AppHeaderContent />
+            <LoggedInHeaderContent />
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </SidebarInset>

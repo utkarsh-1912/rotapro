@@ -6,15 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { CalendarCheck, Settings, Users } from "lucide-react";
 import Image from "next/image";
-
-const Logo = () => (
-  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M24 10C17.37 10 12 15.37 12 22C12 28.63 17.37 34 24 34C30.63 34 36 28.63 36 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M24 34C30.63 34 36 28.63 36 22C36 15.37 30.63 10 24 10C17.37 10 12 15.37 12 22" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 8"/>
-    <path d="M24 4V10" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-    <path d="M24 34V40" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-  </svg>
-);
+import { AppLayout } from "@/components/app-layout";
 
 
 export default function LandingPage() {
@@ -49,28 +41,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-14 items-center">
-          <div className="mr-4 flex items-center">
-            <Link href="/" className="flex items-center gap-2">
-               <Logo />
-               <span className="font-bold text-xl">RotaPro</span>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-end space-x-2">
-            <nav className="flex items-center">
-              <Button asChild variant="ghost">
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Sign Up</Link>
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
-
+    <AppLayout>
       <main>
         <section className="py-20 md:py-32">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -141,24 +112,6 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-
-      <footer className="py-12 border-t">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-center md:text-left">
-              <p className="text-sm text-muted-foreground">
-                &copy; {new Date().getFullYear()} RotaPro. All rights reserved.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Built by Your AI Assistant.
-              </p>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link href="/about" className="hover:text-primary transition-colors">About Us</Link>
-              <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms & Privacy</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </AppLayout>
   );
 }
