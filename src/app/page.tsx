@@ -48,7 +48,7 @@ export default function LandingPage() {
   return (
     <AppLayout>
       <main>
-        <section className="py-20 md:py-32">
+        <section className="py-20 md:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-12 items-center">
                 <motion.div
@@ -89,7 +89,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="py-20 md:py-32 bg-secondary">
+        <section id="features" className="py-20 md:py-24 bg-secondary">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold">Why RotaPro?</h2>
@@ -117,7 +117,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="contact" className="py-20 md:py-32">
+        <section id="contact" className="py-20 md:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
               <Card>
