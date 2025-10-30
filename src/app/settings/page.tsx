@@ -23,10 +23,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from "firebase/auth";
+import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { useAuthStore } from "@/lib/auth-store";
 import { motion } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email(),
+});
 
 const passwordSchema = z
   .object({
@@ -39,7 +46,103 @@ const passwordSchema = z
     path: ["confirmPassword"],
   });
 
-export default function SettingsPage() {
+function ProfileForm() {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const { user, profile } = useAuthStore();
+
+  const form = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: profile?.name || "",
+      email: profile?.email || "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    setIsLoading(true);
+
+    if (!user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in." });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const firestore = getFirestore();
+
+      // Update auth profile
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: values.name });
+      }
+      
+      // Update firestore profile
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, { name: values.name });
+
+      toast({ title: "Success", description: "Your profile has been updated." });
+
+    } catch (error) {
+       console.error("Profile Update Error:", error);
+       toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update your profile. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile</CardTitle>
+        <CardDescription>Update your personal information.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your name" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} disabled />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Updating..." : "Update Profile"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PasswordForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuthStore();
@@ -70,10 +173,7 @@ export default function SettingsPage() {
       const auth = getAuth();
       const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
       
-      // Re-authenticate the user
       await reauthenticateWithCredential(user, credential);
-      
-      // If re-authentication is successful, update the password
       await updatePassword(user, values.newPassword);
 
       toast({
@@ -110,17 +210,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="p-4 sm:p-6"
-    >
-      <Card className="max-w-2xl mx-auto">
+     <Card>
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
+          <CardTitle>Password</CardTitle>
           <CardDescription>
-            Manage your account settings and set a new password.
+            Manage your account security and set a new password.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -189,6 +283,33 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+  );
+}
+
+
+export default function SettingsPage() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="p-4 sm:p-6"
+    >
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
+        <Tabs defaultValue="profile">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="password">Password</TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile">
+            <ProfileForm />
+          </TabsContent>
+          <TabsContent value="password">
+            <PasswordForm />
+          </TabsContent>
+        </Tabs>
+      </div>
     </motion.div>
   );
 }

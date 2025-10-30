@@ -74,5 +74,3 @@ export interface AuthState {
   setProfile: (profile: UserProfile | null) => void;
   setLoading: (loading: boolean) => void;
 }
-
-    
