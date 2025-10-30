@@ -147,13 +147,40 @@ export const useRotaStore = create<AppState>()(
 
         const newHistory = generationHistory.map(gen => {
           if (gen.id === generationId) {
-            return { ...gen, assignments: newAssignments };
+            const originalAssignments = gen.assignments;
+            const updatedOverrides = new Set(gen.manualOverrides || []);
+            
+            Object.keys(newAssignments).forEach(memberId => {
+              if (newAssignments[memberId] !== originalAssignments[memberId]) {
+                updatedOverrides.add(memberId);
+              }
+            });
+
+            return { ...gen, assignments: newAssignments, manualOverrides: Array.from(updatedOverrides) };
           }
           return gen;
         });
 
         return { generationHistory: newHistory };
       }),
+      
+      updateAssignment: (memberId, newShiftId) => {
+        set(state => {
+            const { activeGenerationId, generationHistory } = state;
+            if (!activeGenerationId) return state;
+
+            const newHistory = generationHistory.map(gen => {
+                if (gen.id === activeGenerationId) {
+                    const newAssignments = { ...gen.assignments, [memberId]: newShiftId };
+                    const newOverrides = new Set(gen.manualOverrides || []);
+                    newOverrides.add(memberId);
+                    return { ...gen, assignments: newAssignments, manualOverrides: Array.from(newOverrides) };
+                }
+                return gen;
+            });
+            return { generationHistory: newHistory };
+        });
+      },
 
       generateNewRota: (startDate: Date) => {
         set(state => {
@@ -180,7 +207,8 @@ export const useRotaStore = create<AppState>()(
                 id: new Date().getTime().toString(),
                 startDate: formatISO(newStartDate),
                 assignments: newAssignments,
-                teamMembersAtGeneration: [...teamMembers] // Preserve state of team
+                teamMembersAtGeneration: [...teamMembers],
+                manualOverrides: [],
             };
 
             const newHistory = [...generationHistory, newGeneration];
@@ -199,7 +227,7 @@ export const useRotaStore = create<AppState>()(
 
           const newHistory = generationHistory.map(gen => {
               if (gen.id === activeGenerationId) {
-                  const newAssignments = JSON.parse(JSON.stringify(gen.assignments));
+                  const newAssignments = { ...gen.assignments };
                   const shift1 = newAssignments[memberId1];
                   const shift2 = newAssignments[memberId2];
 
@@ -208,8 +236,12 @@ export const useRotaStore = create<AppState>()(
 
                   if (shift1 !== undefined) newAssignments[memberId2] = shift1;
                   else delete newAssignments[memberId2];
+
+                  const newOverrides = new Set(gen.manualOverrides || []);
+                  newOverrides.add(memberId1);
+                  newOverrides.add(memberId2);
                   
-                  return {...gen, assignments: newAssignments};
+                  return {...gen, assignments: newAssignments, manualOverrides: Array.from(newOverrides)};
               }
               return gen;
           });
@@ -264,5 +296,6 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     swapShifts: state.swapShifts,
     deleteGeneration: state.deleteGeneration,
     setActiveGenerationId: state.setActiveGenerationId,
-    updateAssignmentsForGeneration: state.updateAssignmentsForGeneration
+    updateAssignmentsForGeneration: state.updateAssignmentsForGeneration,
+    updateAssignment: state.updateAssignment,
 }));

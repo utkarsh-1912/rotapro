@@ -8,7 +8,7 @@ export interface TeamMember {
 }
 
 export interface Shift {
-  id: string;
+  id:string;
   name: string;
   startTime: string;
   endTime: string;
@@ -28,6 +28,7 @@ export interface RotaGeneration {
   startDate: string; // ISO string for the start of this period
   assignments: RotaAssignments;
   teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
+  manualOverrides?: string[]; // Array of member IDs that have been manually changed
 }
 
 // Tracks how many consecutive periods a member has had the same shift
@@ -49,6 +50,7 @@ export interface AppState {
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;
+  updateAssignment: (memberId: string, newShiftId: string) => void;
 }
 
 export type UserProfile = {

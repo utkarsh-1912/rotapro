@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import type { TeamMember } from "@/lib/types";
+import { Recycle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
   const { generationHistory, activeGenerationId, teamMembers: allTeamMembers, shifts } = useRotaStore();
@@ -37,10 +39,10 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
   }
 
   const shiftMap = new Map(shifts.map((s) => [s.id, s]));
-  const { assignments } = activeGeneration;
+  const { assignments, manualOverrides } = activeGeneration;
 
   return (
-    <>
+    <TooltipProvider>
       <div className="overflow-x-auto rounded-lg border bg-card" ref={ref}>
           <Table>
             <TableHeader>
@@ -56,6 +58,8 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                     if (!member) return null;
                     const shiftId = assignments[member.id];
                     const shift = shiftId ? shiftMap.get(shiftId) : null;
+                    const isOverridden = manualOverrides?.includes(member.id);
+
                     return (
                       <TableCell key={member.id} className="text-center p-2 align-top h-24 group">
                          {shift ? (
@@ -65,10 +69,20 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                               className="font-semibold text-base whitespace-nowrap"
                               style={{ 
                                   backgroundColor: shift.color,
-                                  color: 'hsl(var(--card-foreground))' 
+                                  color: 'hsl(var(--card-foreground))'
                               }}
                             >
                               {shift.name}
+                               {isOverridden && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Recycle className="h-3 w-3 ml-1.5 inline-block" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Shift was manually changed</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                              )}
                             </Badge>
                             <div className="text-xs text-muted-foreground font-mono">
                               {shift.startTime} - {shift.endTime}
@@ -91,7 +105,7 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
             </TableBody>
           </Table>
       </div>
-    </>
+    </TooltipProvider>
   );
 });
 
