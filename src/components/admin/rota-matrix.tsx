@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Badge } from "../ui/badge";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../ui/pagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
 
 export function RotaMatrix() {
     const { teamMembers, generationHistory, shifts } = useRotaStore();
@@ -117,6 +117,12 @@ export function RotaMatrix() {
                     <Pagination>
                         <PaginationContent>
                             <PaginationItem>
+                                <PaginationFirst 
+                                    onClick={() => setCurrentPage(0)}
+                                    className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                                />
+                            </PaginationItem>
+                            <PaginationItem>
                                 <PaginationPrevious 
                                     onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} 
                                     className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
@@ -130,6 +136,12 @@ export function RotaMatrix() {
                             <PaginationItem>
                                 <PaginationNext 
                                     onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
+                                    className={currentPage === pageCount - 1 ? "pointer-events-none opacity-50" : undefined}
+                                />
+                            </PaginationItem>
+                             <PaginationItem>
+                                <PaginationLast 
+                                    onClick={() => setCurrentPage(pageCount - 1)}
                                     className={currentPage === pageCount - 1 ? "pointer-events-none opacity-50" : undefined}
                                 />
                             </PaginationItem>
