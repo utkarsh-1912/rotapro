@@ -30,35 +30,31 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
 
 const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: RotaGeneration[]): ShiftStreak => {
     const streaks: ShiftStreak = {};
-    // Initialize streaks for all members
-    teamMembers.forEach(member => {
-        streaks[member.id] = { shiftId: null, count: 0 };
-    });
-
     if (generationHistory.length === 0) {
+        teamMembers.forEach(member => {
+            streaks[member.id] = { shiftId: null, count: 0 };
+        });
         return streaks;
     }
 
-    // Sort history from OLDEST to NEWEST to calculate streaks correctly
     const sortedHistory = [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime());
     
     for (const member of teamMembers) {
+        const mostRecentGeneration = sortedHistory[sortedHistory.length - 1];
+        const lastShiftId = mostRecentGeneration.assignments[member.id] || null;
+
+        if (!lastShiftId) {
+            streaks[member.id] = { shiftId: null, count: 0 };
+            continue;
+        }
+
         let streakCount = 0;
-        let lastShiftId: string | null = null;
-        
-        if (sortedHistory.length > 0) {
-            // Start from the most recent generation and go backwards
-            lastShiftId = sortedHistory[sortedHistory.length - 1].assignments[member.id] || null;
-            if(lastShiftId) {
-                streakCount = 1;
-                for (let i = sortedHistory.length - 2; i >= 0; i--) {
-                    const currentAssignment = sortedHistory[i].assignments[member.id];
-                    if (currentAssignment && currentAssignment === lastShiftId) {
-                        streakCount++;
-                    } else {
-                        break; // Streak broken
-                    }
-                }
+        for (let i = sortedHistory.length - 1; i >= 0; i--) {
+            const gen = sortedHistory[i];
+            if (gen.assignments[member.id] === lastShiftId) {
+                streakCount++;
+            } else {
+                break; 
             }
         }
         streaks[member.id] = { shiftId: lastShiftId, count: streakCount };
@@ -195,7 +191,6 @@ export const useRotaStore = create<AppState>()(
 
             const newStartDate = startOfWeek(startDate, { weekStartsOn: 1 });
 
-            // To calculate streaks correctly, we need the history of *current* members only
             const currentMemberIds = new Set(teamMembers.map(m => m.id));
             const filteredHistory = generationHistory.map(gen => ({
               ...gen,
@@ -282,7 +277,6 @@ export const useRotaStore = create<AppState>()(
        onRehydrateStorage: () => (state) => {
         if (state) {
             if (!state.activeGenerationId && state.generationHistory.length > 0) {
-              // If activeGenerationId is somehow null but history exists, set it to the latest.
               const sortedHistory = [...state.generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
               state.activeGenerationId = sortedHistory[0].id;
             }
