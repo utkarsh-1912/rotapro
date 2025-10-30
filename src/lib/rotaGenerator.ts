@@ -181,56 +181,88 @@ export const balanceAssignments = (
         const counts: Record<string, string[]> = {};
         shifts.forEach(s => counts[s.id] = []);
         for (const memberId in balancedAssignments) {
-            const shiftId = balancedAssignments[memberId];
-            if (shiftId && counts[shiftId]) {
-                counts[shiftId].push(memberId);
+            const member = memberMap.get(memberId);
+            // Only count non-fixed members for balancing purposes
+            if(member && !member.fixedShiftId) {
+                const shiftId = balancedAssignments[memberId];
+                if (shiftId && counts[shiftId]) {
+                    counts[shiftId].push(memberId);
+                }
             }
         }
         return counts;
     };
 
     let shiftCounts = calculateCounts();
+    let loops = 0; // Failsafe
 
-    const understaffedShifts = shifts.filter(s => shiftCounts[s.id].length < s.minTeam);
-    const overstaffedShifts = shifts.filter(s => shiftCounts[s.id].length > s.minTeam);
+    while (loops < 10) {
+        const understaffedShifts = shifts.filter(s => (shiftCounts[s.id]?.length ?? 0) < s.minTeam);
+        const overstaffedShifts = shifts.filter(s => (shiftCounts[s.id]?.length ?? 0) > s.minTeam);
 
-    for (const understaffedShift of understaffedShifts) {
-        const needed = understaffedShift.minTeam - shiftCounts[understaffedShift.id].length;
-        
-        for (let i = 0; i < needed; i++) {
-            let moved = false;
-            // Try to find a member from an overstaffed shift who can move
-            for (const overstaffedShift of overstaffedShifts) {
-                if (shiftCounts[overstaffedShift.id].length <= overstaffedShift.minTeam) continue;
+        if (understaffedShifts.length === 0) {
+            break; // All minimums met
+        }
 
-                const potentialMovers = shiftCounts[overstaffedShift.id]
-                    .filter(memberId => memberMap.get(memberId)?.fixedShiftId !== understaffedShift.id);
+        const targetShift = understaffedShifts[0];
+        let moved = false;
 
-                // Find a mover who satisfies transition rules
-                let moverId = potentialMovers.find(memberId => {
-                    const lastShiftId = shiftStreaks[memberId]?.shiftId;
-                    const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-                    return isTransitionAllowed(lastShift, understaffedShift);
-                });
+        // Try to find a direct move from an overstaffed shift
+        for (const sourceShift of overstaffedShifts) {
+            const potentialMovers = shiftCounts[sourceShift.id].filter(memberId => {
+                const lastShiftId = shiftStreaks[memberId]?.shiftId;
+                const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+                return isTransitionAllowed(lastShift, targetShift);
+            });
 
-                // If no ideal mover, take the first available one from the overstaffed shift
-                if (!moverId && potentialMovers.length > 0) {
-                    moverId = potentialMovers[0];
-                }
-
-                if (moverId) {
-                    // Move the member
-                    balancedAssignments[moverId] = understaffedShift.id;
-                    // Recalculate counts after the move
-                    shiftCounts = calculateCounts();
-                    moved = true;
-                    break; // Move to the next needed member
-                }
-            }
-            if (!moved) {
-                console.warn(`Could not find a member to move to understaffed shift: ${understaffedShift.name}`);
+            if (potentialMovers.length > 0) {
+                const moverId = potentialMovers[0];
+                balancedAssignments[moverId] = targetShift.id;
+                moved = true;
+                break; // Mover found, break from sourceShift loop
             }
         }
+
+        // If no direct move, try a swap
+        if (!moved) {
+            for (const sourceShift of overstaffedShifts) {
+                const swapperFromOverstaffed = shiftCounts[sourceShift.id][0]; // Just take the first one
+                
+                // Find someone in the target shift who CAN move to the source shift
+                const swapperFromUnderstaffed = (shiftCounts[targetShift.id] || []).find(memberId => {
+                    const lastShiftId = shiftStreaks[memberId]?.shiftId;
+                    const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+                    return isTransitionAllowed(lastShift, sourceShift);
+                });
+
+                if (swapperFromOverstaffed && swapperFromUnderstaffed) {
+                    // Perform the swap
+                    balancedAssignments[swapperFromOverstaffed] = targetShift.id;
+                    balancedAssignments[swapperFromUnderstaffed] = sourceShift.id;
+                    moved = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!moved) {
+            // As a last resort, just move someone, ignoring transition rules
+            for (const sourceShift of overstaffedShifts) {
+                const moverId = shiftCounts[sourceShift.id][0];
+                balancedAssignments[moverId] = targetShift.id;
+                moved = true;
+                break;
+            }
+        }
+
+        if (!moved) {
+            // This should be rare, means no one can be moved.
+            console.warn("Could not balance shifts. Check constraints.");
+            break;
+        }
+
+        shiftCounts = calculateCounts();
+        loops++;
     }
 
     return balancedAssignments;
