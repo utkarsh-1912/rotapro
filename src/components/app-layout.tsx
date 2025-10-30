@@ -19,10 +19,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, PanelLeft } from "lucide-react";
+import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, PanelLeft, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "./ui/dropdown-menu";
 import { useAuthStore } from "@/lib/auth-store";
 import { getAuth, signOut } from "firebase/auth";
 
@@ -34,6 +34,15 @@ const Logo = () => (
     <path d="M24 34V40" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
   </svg>
 );
+
+const getInitials = (name: string | null | undefined) => {
+    if (!name) return "AD";
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+};
 
 function ThemeToggle() {
     const { setTheme } = useTheme();
@@ -63,29 +72,6 @@ function ThemeToggle() {
 }
 
 function AppHeaderContent() {
-  const { state: sidebarState, isMobile } = useSidebar();
-
-  if (isMobile) {
-    return <SidebarTrigger className="md:hidden"/>;
-  }
-
-  if (sidebarState === "collapsed") {
-    return (
-      <div className="flex items-center gap-2.5">
-          <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
-              <Logo />
-          </div>
-          <span className="text-lg font-semibold">RotaPro</span>
-      </div>
-    );
-  }
-
-  return <div />;
-}
-
-
-export function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -93,19 +79,53 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     await signOut(getAuth());
     router.push("/");
   };
+
+  return (
+    <>
+      <div className="flex items-center gap-4">
+        <SidebarTrigger className="md:hidden"/>
+        <span className="text-lg font-semibold hidden sm:block">RotaPro</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || "User"} />
+                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.displayName}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  );
+}
+
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { user } = useAuthStore();
   
   if (!user) {
     return <>{children}</>;
   }
-
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return "AD";
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
 
   return (
     <SidebarProvider>
@@ -164,42 +184,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-2 cursor-pointer p-2 rounded-md hover:bg-sidebar-accent">
-                <Avatar>
-                    <AvatarImage src={user.photoURL || undefined} />
-                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                    <span className="text-sm font-medium text-sidebar-foreground">{user.displayName || 'User'}</span>
-                    <span className="text-xs text-sidebar-foreground/70">{user.email}</span>
-                </div>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem disabled>
-                    <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                            {user.email}
-                        </p>
-                    </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <SidebarFooter className="p-2">
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/guide"}
+                    tooltip="User Guide"
+                >
+                    <Link href="/guide">
+                        <HelpCircle />
+                        <span className="group-data-[collapsible=icon]:hidden">User Guide</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center justify-between gap-4 border-b bg-background/50 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
             <AppHeaderContent />
-            <ThemeToggle />
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </SidebarInset>
