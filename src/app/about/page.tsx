@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-6 text-muted-foreground">
             <p className="text-lg">
-              RotaPro is a powerful, AI-driven application designed to simplify the complexities of team scheduling and rota management. Our mission is to provide an intuitive, efficient, and fair system for managers and team members alike.
+              RotaPro is a powerful application designed to simplify the complexities of team scheduling and rota management. Our mission is to provide an intuitive, efficient, and fair system for managers and team members alike.
             </p>
             <p>
               Built with modern technology, RotaPro leverages intelligent algorithms to automatically generate balanced schedules, taking into account shift constraints, team member availability, and fairness rules. We believe that proper scheduling is the backbone of a productive and happy team, and we're here to make that process seamless.
