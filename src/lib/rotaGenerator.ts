@@ -51,7 +51,13 @@ export const generateNewRotaAssignments = (
 
   membersToRotate.forEach(member => {
     const lastShiftId = shiftStreaks[member.id].shiftId;
-    const nextShiftId = getNextShiftId(lastShiftId);
+    let nextShiftId = getNextShiftId(lastShiftId);
+
+    // New Rule: Prevent APAC -> US
+    if (lastShiftId === 'apac' && nextShiftId === 'us') {
+      nextShiftId = getNextShiftId(nextShiftId); // Skip US and go to the next one (EMEA)
+    }
+
     assignments[member.id] = nextShiftId;
   });
 
@@ -84,8 +90,18 @@ export const generateNewRotaAssignments = (
   shuffle(availableMembers);
 
   unassignedShifts.forEach(shiftId => {
-      if (availableMembers.length > 0) {
-          const member = availableMembers.pop()!;
+      // Find a member who can take this shift
+      const memberIndex = availableMembers.findIndex(member => {
+          const lastShiftId = shiftStreaks[member.id]?.shiftId;
+          // New Rule: Prevent APAC -> US transition
+          if (shiftId === 'us' && lastShiftId === 'apac') {
+              return false;
+          }
+          return true;
+      });
+
+      if (memberIndex !== -1) {
+          const member = availableMembers.splice(memberIndex, 1)[0];
           assignments[member.id] = shiftId;
       }
   });
@@ -97,12 +113,23 @@ export const generateNewRotaAssignments = (
       assignments[member.id] = 'late_emea';
   });
 
-  // 6. Final check: If minimums are still not met (e.g. fixed shifts create conflict), pull from LATE EMEA
+  // 6. Final check: If minimums are still not met (e.g. due to APAC->US rule), pull from LATE EMEA
   ['apac', 'us', 'emea'].forEach(shiftId => {
     const currentCount = Object.values(assignments).filter(s => s === shiftId).length;
     if (currentCount < 1) {
-      // Find a member on LATE EMEA to move
-      const memberToMoveId = Object.keys(assignments).find(id => assignments[id] === 'late_emea' && !teamMembers.find(m => m.id === id)?.fixedShiftId);
+      // Find a member on LATE EMEA to move, respecting all rules
+      const memberToMoveId = Object.keys(assignments).find(id => {
+          if (assignments[id] !== 'late_emea') return false;
+          
+          const member = teamMembers.find(m => m.id === id);
+          if (member?.fixedShiftId) return false;
+
+          const lastShiftId = shiftStreaks[id]?.shiftId;
+          if (shiftId === 'us' && lastShiftId === 'apac') return false;
+
+          return true;
+      });
+
       if (memberToMoveId) {
         assignments[memberToMoveId] = shiftId;
       }
