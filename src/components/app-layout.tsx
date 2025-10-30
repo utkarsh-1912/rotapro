@@ -25,6 +25,7 @@ import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "./ui/dropdown-menu";
 import { useAuthStore } from "@/lib/auth-store";
 import { getAuth, signOut } from "firebase/auth";
+import { cn } from "@/lib/utils";
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,7 +46,7 @@ const getInitials = (name: string | null | undefined) => {
 };
 
 function ThemeToggle() {
-    const { setTheme } = useTheme();
+    const { setTheme, theme } = useTheme();
 
     return (
         <DropdownMenu>
@@ -57,13 +58,13 @@ function ThemeToggle() {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setTheme("light")}>
+                <DropdownMenuItem onClick={() => setTheme("light")} className={cn({"bg-accent": theme === "light"})}>
                     Light
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <DropdownMenuItem onClick={() => setTheme("dark")} className={cn({"bg-accent": theme === "dark"})}>
                     Dark
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
+                <DropdownMenuItem onClick={() => setTheme("system")} className={cn({"bg-accent": theme === "system"})}>
                     System
                 </DropdownMenuItem>
             </DropdownMenuContent>
@@ -85,7 +86,7 @@ function AppHeaderContent() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="md:hidden"/>
+        {isMobile && <SidebarTrigger/>}
         {isCollapsed && !isMobile && (
              <Link href="/" className="flex items-center gap-2">
                <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
