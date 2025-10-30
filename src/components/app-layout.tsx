@@ -107,20 +107,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {profile?.isAdmin && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin")}
-                  tooltip="Admin Panel"
-                >
-                  <Link href="/admin">
-                    <Shield />
-                    <span className="group-data-[collapsible=icon]:hidden">Admin Panel</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/admin")}
+                tooltip="Admin Panel"
+              >
+                <Link href="/admin">
+                  <Shield />
+                  <span className="group-data-[collapsible=icon]:hidden">Admin Panel</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4 border-t border-sidebar-border">
