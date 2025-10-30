@@ -284,15 +284,19 @@ export function RotaMatrix() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {swapHistory.map(({ gen, details }) => (
-                                        <TableRow key={gen.id}>
-                                            <TableCell className="font-medium whitespace-nowrap">
-                                                {format(parseISO(gen.startDate), 'd MMM yyyy')}
-                                            </TableCell>
-                                            <TableCell>{details?.members}</TableCell>
-                                            <TableCell>{details?.shifts}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {swapHistory.map(({ gen, details }) => {
+                                        const startDate = parseISO(gen.startDate);
+                                        const endDate = addDays(startDate, 13);
+                                        return (
+                                            <TableRow key={gen.id}>
+                                                <TableCell className="font-medium whitespace-nowrap">
+                                                    {format(startDate, 'd MMM')} - {format(endDate, 'd MMM yyyy')}
+                                                </TableCell>
+                                                <TableCell>{details?.members}</TableCell>
+                                                <TableCell>{details?.shifts}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
