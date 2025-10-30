@@ -17,7 +17,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Shield, Moon, Sun, LogOut } from "lucide-react";
+import { LayoutDashboard, Shield, Moon, Sun, LogOut, ListTree } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "./ui/dropdown-menu";
@@ -106,6 +106,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/dashboard">
                   <LayoutDashboard />
                   <span className="group-data-[collapsible=icon]:hidden">Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/matrix")}
+                tooltip="Rota Matrix"
+              >
+                <Link href="/matrix">
+                  <ListTree />
+                  <span className="group-data-[collapsible=icon]:hidden">Rota Matrix</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
