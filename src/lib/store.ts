@@ -1,10 +1,20 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState, RotaGeneration, ShiftStreak, TeamMember } from "./types";
+import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember } from "./types";
 import { startOfWeek, formatISO, parseISO } from "date-fns";
 import { generateNewRotaAssignments } from "./rotaGenerator";
 
-const getInitialState = () => {
+const SHIFT_COLORS = [
+    'bg-blue-200',
+    'bg-amber-200',
+    'bg-indigo-200',
+    'bg-emerald-200',
+    'bg-rose-200',
+    'bg-pink-200',
+    'bg-purple-200',
+];
+
+const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreActions>> => {
     return {
         teamMembers: [],
         shifts: [],
@@ -80,6 +90,20 @@ export const useRotaStore = create<AppState>()(
                 teamMembers: state.teamMembers.filter((member) => member.id !== id),
                 generationHistory: newHistory,
             };
+        }),
+      
+      addShift: (newShiftData) =>
+        set((state) => {
+          const newShift: Shift = {
+            id: new Date().getTime().toString(),
+            name: newShiftData.name,
+            startTime: newShiftData.startTime,
+            endTime: newShiftData.endTime,
+            color: SHIFT_COLORS[state.shifts.length % SHIFT_COLORS.length],
+          };
+          return {
+            shifts: [...state.shifts, newShift],
+          };
         }),
 
       updateShift: (id, newShift) =>
@@ -179,6 +203,7 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     addTeamMember: state.addTeamMember,
     updateTeamMember: state.updateTeamMember,
     deleteTeamMember: state.deleteTeamMember,
+    addShift: state.addShift,
     updateShift: state.updateShift,
     generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,

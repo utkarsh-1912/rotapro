@@ -27,7 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const shiftSchema = z.object({
@@ -35,6 +35,89 @@ const shiftSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)"),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:mm)"),
 });
+
+function AddShiftForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+    const { addShift } = useRotaStoreActions();
+    const { toast } = useToast();
+    const form = useForm<z.infer<typeof shiftSchema>>({
+        resolver: zodResolver(shiftSchema),
+        defaultValues: {
+            name: "",
+            startTime: "09:00",
+            endTime: "17:00",
+        },
+    });
+
+    function onSubmit(values: z.infer<typeof shiftSchema>) {
+        addShift(values);
+        toast({
+            title: "Shift Added",
+            description: `The ${values.name} shift has been added.`,
+        });
+        setOpen(false);
+        form.reset();
+    }
+    
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <DialogHeader>
+                    <DialogTitle>Add New Shift</DialogTitle>
+                    <DialogDescription>
+                        Enter the details for the new shift.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Shift Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. Night Shift" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="startTime"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Start Time</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="endTime"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>End Time</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button type="submit">Add Shift</Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+}
 
 function EditShiftForm({ shift, setOpen }: { shift: Shift; setOpen: (open: boolean) => void }) {
   const { updateShift } = useRotaStoreActions();
@@ -68,6 +151,19 @@ function EditShiftForm({ shift, setOpen }: { shift: Shift; setOpen: (open: boole
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Shift Name</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+           />
           <FormField
             control={form.control}
             name="startTime"
@@ -116,11 +212,21 @@ export function ShiftManager() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Shift Management</CardTitle>
-        <CardDescription>
-          View and edit the available shifts and their hours.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+            <CardTitle>Shift Management</CardTitle>
+            <CardDescription>
+            View, edit, and create the available shifts and their hours.
+            </CardDescription>
+        </div>
+         <Dialog open={openDialogs['new-shift'] || false} onOpenChange={(isOpen) => setOpen('new-shift', isOpen)}>
+            <DialogTrigger asChild>
+                <Button><Plus /> Add Shift</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <AddShiftForm setOpen={(isOpen) => setOpen('new-shift', isOpen)} />
+            </DialogContent>
+        </Dialog>
       </CardHeader>
       <CardContent>
         <Table>
@@ -153,6 +259,13 @@ export function ShiftManager() {
                 </TableCell>
               </TableRow>
             ))}
+             {shifts.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No shifts defined.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
