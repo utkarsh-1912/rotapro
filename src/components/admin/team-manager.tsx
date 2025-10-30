@@ -38,15 +38,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const memberSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long."),
+  fixedShiftId: z.string().optional(),
 });
 
 function MemberForm({ member, setOpen }: { member?: TeamMember; setOpen: (open: boolean) => void }) {
   const { addTeamMember, updateTeamMember } = useRotaStoreActions();
+  const shifts = useRotaStore(state => state.shifts);
   const { toast } = useToast();
   const isEditMode = !!member;
 
@@ -54,18 +57,20 @@ function MemberForm({ member, setOpen }: { member?: TeamMember; setOpen: (open: 
     resolver: zodResolver(memberSchema),
     defaultValues: {
       name: member?.name || "",
+      fixedShiftId: member?.fixedShiftId || "",
     },
   });
 
   function onSubmit(values: z.infer<typeof memberSchema>) {
+    const fixedShiftId = values.fixedShiftId === "none" ? undefined : values.fixedShiftId;
     if (isEditMode && member) {
-      updateTeamMember(member.id, values.name);
+      updateTeamMember(member.id, { name: values.name, fixedShiftId });
       toast({
         title: "Member Updated",
         description: `${values.name}'s details have been updated.`,
       });
     } else {
-      addTeamMember(values.name);
+      addTeamMember(values.name, fixedShiftId);
       toast({
         title: "Member Added",
         description: `${values.name} has been added to the team.`,
@@ -98,6 +103,29 @@ function MemberForm({ member, setOpen }: { member?: TeamMember; setOpen: (open: 
               </FormItem>
             )}
           />
+           <FormField
+            control={form.control}
+            name="fixedShiftId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fixed Shift (Optional)</FormLabel>
+                 <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No fixed shift" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">No fixed shift</SelectItem>
+                    {shifts.map(shift => (
+                      <SelectItem key={shift.id} value={shift.id}>{shift.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -112,6 +140,7 @@ function MemberForm({ member, setOpen }: { member?: TeamMember; setOpen: (open: 
 
 export function TeamManager() {
   const teamMembers = useRotaStore((state) => state.teamMembers);
+  const shifts = useRotaStore(state => state.shifts);
   const { deleteTeamMember } = useRotaStoreActions();
   const { toast } = useToast();
   const [dialogs, setDialogs] = React.useState<{[key: string]: boolean}>({});
@@ -128,6 +157,8 @@ export function TeamManager() {
       description: `${member.name} has been removed from the team.`,
     });
   };
+
+  const shiftMap = new Map(shifts.map(s => [s.id, s.name]));
 
   return (
     <Card>
@@ -152,6 +183,7 @@ export function TeamManager() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Fixed Shift</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -159,6 +191,7 @@ export function TeamManager() {
             {teamMembers.map((member) => (
               <TableRow key={member.id}>
                 <TableCell className="font-medium">{member.name}</TableCell>
+                <TableCell>{member.fixedShiftId ? shiftMap.get(member.fixedShiftId) : "None"}</TableCell>
                 <TableCell className="text-right">
                   <Dialog open={dialogs[member.id]} onOpenChange={(open) => setDialogOpen(member.id, open)}>
                     <DialogTrigger asChild>
@@ -199,7 +232,7 @@ export function TeamManager() {
             ))}
             {teamMembers.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
                         No team members found.
                     </TableCell>
                 </TableRow>

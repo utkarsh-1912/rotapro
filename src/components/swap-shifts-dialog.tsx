@@ -62,6 +62,18 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
   });
 
   function onSubmit(values: z.infer<typeof swapSchema>) {
+    const member1 = teamMembers.find(m => m.id === values.memberId1);
+    const member2 = teamMembers.find(m => m.id === values.memberId2);
+
+    if (member1?.fixedShiftId || member2?.fixedShiftId) {
+      toast({
+        variant: "destructive",
+        title: "Swap Failed",
+        description: "Cannot swap shifts for a member who has a fixed assignment.",
+      });
+      return;
+    }
+    
     const dateString = format(values.date, "yyyy-MM-dd");
     swapShifts(dateString, values.memberId1, values.memberId2);
     toast({
@@ -78,13 +90,15 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
     }
   }, [open, form]);
 
+  const swappableMembers = teamMembers.filter(m => !m.fixedShiftId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Swap Shifts</DialogTitle>
           <DialogDescription>
-            Select a date and two team members to swap their assigned shifts.
+            Select a date and two team members to swap their assigned shifts. Members with fixed shifts cannot be swapped.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -140,7 +154,7 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {teamMembers.map((member) => (
+                      {swappableMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}
                         </SelectItem>
@@ -164,7 +178,7 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {teamMembers.map((member) => (
+                      {swappableMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}
                         </SelectItem>

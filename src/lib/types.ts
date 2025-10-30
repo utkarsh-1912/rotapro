@@ -1,6 +1,7 @@
 export interface TeamMember {
   id: string;
   name: string;
+  fixedShiftId?: string;
 }
 
 export interface Shift {
@@ -20,8 +21,8 @@ export interface AppState {
   shifts: Shift[];
   rota: Rota;
   startDate: string; // ISO string
-  addTeamMember: (name: string) => void;
-  updateTeamMember: (id: string, name: string) => void;
+  addTeamMember: (name: string, fixedShiftId?: string) => void;
+  updateTeamMember: (id: string, updates: Partial<Pick<TeamMember, 'name' | 'fixedShiftId'>>) => void;
   deleteTeamMember: (id: string) => void;
   updateShift: (id: string, newShift: Partial<Shift>) => void;
   setRota: (newRota: Rota, newStartDate?: string) => void;

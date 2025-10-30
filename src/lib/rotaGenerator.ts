@@ -1,19 +1,17 @@
-import { addDays, format, startOfWeek } from "date-fns";
-import type { TeamMember, Shift, Rota } from "./types";
+import { addDays, format } from "date-fns";
+import type { TeamMember } from "./types";
+import { type Rota } from "./types";
 
-// APAC=1, US=1, EMEA=1-2, LATE EMEA=rest
 const getShiftSlots = (teamSize: number): string[] => {
   const slots: string[] = [];
   slots.push("apac"); // 1 APAC
   slots.push("us");   // 1 US
   
-  // 1 EMEA if team is 5 or less, 2 if more
   const emeaCount = teamSize <= 5 ? 1 : 2;
   for (let i = 0; i < emeaCount; i++) {
     slots.push("emea");
   }
 
-  // LATE EMEA for the rest
   const lateEmeaCount = teamSize - slots.length;
   for (let i = 0; i < lateEmeaCount; i++) {
     slots.push("late_emea");
@@ -22,52 +20,59 @@ const getShiftSlots = (teamSize: number): string[] => {
   return slots;
 };
 
-/**
- * Generates a completely new 14-day rota.
- * It assigns each team member to a shift for the entire 14-day period.
- * The assignment is based on predefined shift slot counts.
- * Team members are shuffled to ensure variety in initial assignments.
- */
+
+const assignShifts = (members: TeamMember[], rota: Rota, startDate: string, days: number) => {
+    const fixedShiftMembers = members.filter(m => m.fixedShiftId);
+    const rotatingMembers = members.filter(m => !m.fixedShiftId);
+
+    // Assign fixed shifts first
+    for (let i = 0; i < days; i++) {
+        const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
+        if (!rota[date]) rota[date] = {};
+
+        fixedShiftMembers.forEach(member => {
+            if (member.fixedShiftId) {
+                rota[date][member.id] = member.fixedShiftId;
+            }
+        });
+    }
+
+    if (rotatingMembers.length > 0) {
+        const shuffledRotatingMembers = [...rotatingMembers].sort(() => Math.random() - 0.5);
+        const availableShiftSlots = getShiftSlots(shuffledRotatingMembers.length);
+
+        const memberToShiftMap: Record<string, string> = {};
+        shuffledRotatingMembers.forEach((member, index) => {
+            const shiftId = availableShiftSlots[index % availableShiftSlots.length];
+            if (shiftId) {
+                memberToShiftMap[member.id] = shiftId;
+            }
+        });
+
+        for (let i = 0; i < days; i++) {
+            const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
+            if (!rota[date]) rota[date] = {};
+            rotatingMembers.forEach((member) => {
+                const assignedShift = memberToShiftMap[member.id];
+                if (assignedShift) {
+                    rota[date][member.id] = assignedShift;
+                }
+            });
+        }
+    }
+};
+
 export const generateNewRota = (
   teamMembers: TeamMember[],
   startDate: string
 ): Rota => {
   const newRota: Rota = {};
   if (teamMembers.length === 0) return newRota;
-
-  // Shuffle members for initial generation to mix things up
-  const shuffledMembers = [...teamMembers].sort(() => Math.random() - 0.5);
-  const shiftSlots = getShiftSlots(shuffledMembers.length);
-
-  const memberToShiftMap: Record<string, string> = {};
-  shuffledMembers.forEach((member, index) => {
-    // Assign a shift slot. If more members than slots, they are off.
-    const shiftId = shiftSlots[index % shiftSlots.length];
-    if (shiftId) {
-        memberToShiftMap[member.id] = shiftId;
-    }
-  });
-
-  for (let i = 0; i < 14; i++) {
-    const date = format(addDays(new Date(startDate), i), "yyyy-MM-dd");
-    newRota[date] = {};
-    teamMembers.forEach((member) => {
-      const assignedShift = memberToShiftMap[member.id];
-      if (assignedShift) {
-        newRota[date][member.id] = assignedShift;
-      }
-    });
-  }
-
+  assignShifts(teamMembers, newRota, startDate, 14);
   return newRota;
 };
 
 
-/**
- * Generates the next 14-day rota by rotating team members through shift slots.
- * This ensures that headcounts per shift are maintained while people rotate.
- * For example, the person on 'APAC' shift will move to the next person's shift in the line.
- */
 export const generateNextRota = (
   currentRota: Rota,
   teamMembers: TeamMember[],
@@ -77,37 +82,55 @@ export const generateNextRota = (
   if (teamMembers.length === 0) {
     return { newRota: {}, newStartDate };
   }
-
-  // To ensure consistent rotation, we need a stable order of members.
-  const sortedMembers = [...teamMembers].sort((a, b) => a.id.localeCompare(b.id));
-
-  // Rotate the list of members: the first member moves to the end.
-  const rotatedMembers = [...sortedMembers];
-  const firstMember = rotatedMembers.shift();
-  if(firstMember) {
-      rotatedMembers.push(firstMember);
-  }
   
-  const shiftSlots = getShiftSlots(sortedMembers.length);
-
-  const memberToShiftMap: Record<string, string> = {};
-  rotatedMembers.forEach((member, index) => {
-    const shiftId = shiftSlots[index % shiftSlots.length];
-    if (shiftId) {
-        memberToShiftMap[member.id] = shiftId;
-    }
-  });
-
   const nextRota: Rota = {};
+
+  const fixedShiftMembers = teamMembers.filter(m => m.fixedShiftId);
+  const rotatingMembers = teamMembers.filter(m => !m.fixedShiftId);
+
+  // Assign fixed shifts for the next period
   for (let i = 0; i < 14; i++) {
-    const date = format(addDays(new Date(newStartDate), i), "yyyy-MM-dd");
-    nextRota[date] = {};
-    teamMembers.forEach((member) => {
-       const assignedShift = memberToShiftMap[member.id];
-       if (assignedShift) {
-         nextRota[date][member.id] = assignedShift;
-       }
+      const date = format(addDays(new Date(newStartDate), i), "yyyy-MM-dd");
+      if (!nextRota[date]) nextRota[date] = {};
+
+      fixedShiftMembers.forEach(member => {
+          if (member.fixedShiftId) {
+              nextRota[date][member.id] = member.fixedShiftId;
+          }
+      });
+  }
+
+  // Rotate the remaining members
+  if (rotatingMembers.length > 0) {
+    const sortedRotatingMembers = [...rotatingMembers].sort((a, b) => a.id.localeCompare(b.id));
+
+    // Rotate the list of members: the first member moves to the end.
+    const rotatedMembers = [...sortedRotatingMembers];
+    const firstMember = rotatedMembers.shift();
+    if(firstMember) {
+        rotatedMembers.push(firstMember);
+    }
+    
+    const shiftSlots = getShiftSlots(sortedRotatingMembers.length);
+
+    const memberToShiftMap: Record<string, string> = {};
+    rotatedMembers.forEach((member, index) => {
+      const shiftId = shiftSlots[index % shiftSlots.length];
+      if (shiftId) {
+          memberToShiftMap[member.id] = shiftId;
+      }
     });
+
+    for (let i = 0; i < 14; i++) {
+      const date = format(addDays(new Date(newStartDate), i), "yyyy-MM-dd");
+      if (!nextRota[date]) nextRota[date] = {};
+      rotatingMembers.forEach((member) => {
+         const assignedShift = memberToShiftMap[member.id];
+         if (assignedShift) {
+           nextRota[date][member.id] = assignedShift;
+         }
+      });
+    }
   }
   
   return { newRota: nextRota, newStartDate };

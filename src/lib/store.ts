@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState, Rota } from "./types";
+import type { AppState, Rota, TeamMember } from "./types";
 import { addDays, format, startOfWeek } from "date-fns";
 import { generateNewRota, generateNextRota } from "./rotaGenerator";
 
@@ -13,7 +13,7 @@ const useStore = create<AppState>()(
         { id: "2", name: "Bob Williams" },
         { id: "3", name: "Charlie Brown" },
         { id: "4", name: "Diana Miller" },
-        { id: "5", name: "Ethan Davis" },
+        { id: "5", name: "Ethan Davis", fixedShiftId: "us" },
         { id: "6", name: "Fiona Garcia" },
       ],
       shifts: [
@@ -25,18 +25,18 @@ const useStore = create<AppState>()(
       rota: {},
       startDate: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
 
-      addTeamMember: (name) =>
+      addTeamMember: (name, fixedShiftId) =>
         set((state) => ({
           teamMembers: [
             ...state.teamMembers,
-            { id: new Date().getTime().toString(), name },
+            { id: new Date().getTime().toString(), name, fixedShiftId },
           ],
         })),
 
-      updateTeamMember: (id, name) =>
+      updateTeamMember: (id, updates) =>
         set((state) => ({
           teamMembers: state.teamMembers.map((member) =>
-            member.id === id ? { ...member, name } : member
+            member.id === id ? { ...member, ...updates } : member
           ),
         })),
 
@@ -75,6 +75,16 @@ const useStore = create<AppState>()(
       swapShifts: (date, memberId1, memberId2) => {
         set(state => {
           const newRota = JSON.parse(JSON.stringify(state.rota));
+          const member1 = state.teamMembers.find(m => m.id === memberId1);
+          const member2 = state.teamMembers.find(m => m.id === memberId2);
+
+          // Prevent swapping if either member has a fixed shift
+          if (member1?.fixedShiftId || member2?.fixedShiftId) {
+              // Optionally, show a toast notification here to inform the user
+              console.warn("Cannot swap shifts for members with fixed assignments.");
+              return state;
+          }
+
           if (newRota[date]) {
             const shift1 = newRota[date][memberId1];
             const shift2 = newRota[date][memberId2];
