@@ -66,11 +66,11 @@ export function RotaDashboard() {
                 )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => setSwapDialogOpen(true)}>
+              <Button variant="outline" onClick={() => setSwapDialogOpen(true)} disabled={!activeGeneration}>
                 <ArrowRightLeft />
                 Swap Shifts
               </Button>
-              <Button variant="outline" onClick={handleExport}><Download /> Export CSV</Button>
+              <Button variant="outline" onClick={handleExport} disabled={!activeGeneration}><Download /> Export CSV</Button>
               <Dialog open={isGenerateDialogOpen} onOpenChange={setGenerateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button><Plus/> Generate Rota</Button>

@@ -87,9 +87,9 @@ export function SwapShiftsDialog({ open, onOpenChange }: SwapShiftsDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Swap Rota Period</DialogTitle>
+          <DialogTitle>Swap Shifts</DialogTitle>
           <DialogDescription>
-            Select two members to swap their assigned shifts for the entire active 14-day period. Members with fixed shifts cannot be swapped.
+            Select two members to swap their assigned shifts for the current active period. Members with fixed shifts cannot be swapped.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

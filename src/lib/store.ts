@@ -153,7 +153,7 @@ export const useRotaStore = create<AppState>()(
             const newHistory = state.generationHistory.filter(g => g.id !== generationId);
             let newActiveId = state.activeGenerationId;
             if (state.activeGenerationId === generationId) {
-                newActiveId = newHistory.length > 0 ? newHistory[newHistory.length - 1].id : null;
+                newActiveId = newHistory.length > 0 ? [...newHistory].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0].id : null;
             }
             return {
                 generationHistory: newHistory,
