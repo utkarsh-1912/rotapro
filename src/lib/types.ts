@@ -23,7 +23,7 @@ export interface RotaGeneration {
 }
 
 // Tracks how many consecutive periods a member has had the same shift
-export type ShiftStreak = Record<string, { shiftId: string; count: number }>;
+export type ShiftStreak = Record<string, { shiftId: string | null; count: number }>;
 
 export interface AppState {
   teamMembers: TeamMember[];
@@ -34,7 +34,7 @@ export interface AppState {
   updateTeamMember: (id: string, updates: Partial<Pick<TeamMember, 'name' | 'fixedShiftId'>>) => void;
   deleteTeamMember: (id: string) => void;
   updateShift: (id: string, newShift: Partial<Shift>) => void;
-  generateNewRota: (isNextPeriod?: boolean) => void;
+  generateNewRota: (startDate: Date) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;

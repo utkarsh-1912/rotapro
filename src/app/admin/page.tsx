@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamManager } from "@/components/admin/team-manager";
 import { ShiftManager } from "@/components/admin/shift-manager";
-import { RotaManager } from "@/components/admin/rota-manager";
-import { Users, Clock, CalendarCog } from "lucide-react";
+import { Users, Clock } from "lucide-react";
 
 export default function AdminPage() {
   return (
@@ -19,23 +18,19 @@ export default function AdminPage() {
       <Card>
         <CardHeader>
           <CardTitle>Admin Panel</CardTitle>
-          <CardDescription>Manage your team, shifts, and rotas from one place.</CardDescription>
+          <CardDescription>Manage your team and shifts from one place.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="team">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="team"><Users className="mr-2 h-4 w-4" />Team Members</TabsTrigger>
               <TabsTrigger value="shifts"><Clock className="mr-2 h-4 w-4" />Shifts</TabsTrigger>
-              <TabsTrigger value="rota"><CalendarCog className="mr-2 h-4 w-4" />Rota</TabsTrigger>
             </TabsList>
             <TabsContent value="team" className="mt-6">
               <TeamManager />
             </TabsContent>
             <TabsContent value="shifts" className="mt-6">
               <ShiftManager />
-            </TabsContent>
-            <TabsContent value="rota" className="mt-6">
-              <RotaManager />
             </TabsContent>
           </Tabs>
         </CardContent>
