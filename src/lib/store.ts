@@ -188,8 +188,8 @@ export const useRotaStore = create<AppState>()(
                 toast({
                     variant: "destructive",
                     title: "Staffing Warning",
-                    description: `The number of flexible team members (${flexibleMemberCount}) is less than the total minimum required (${totalMinRequired}). The generated rota may not meet all constraints.`,
-                    duration: 5000,
+                    description: `Not enough flexible members (${flexibleMemberCount}) to meet total minimum of ${totalMinRequired}. Rota may be unbalanced.`,
+                    duration: 6000,
                 });
             }
 
