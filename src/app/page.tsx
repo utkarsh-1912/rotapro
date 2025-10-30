@@ -1,9 +1,11 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CalendarCheck, Settings, Users } from "lucide-react";
+import Image from "next/image";
 
 const Logo = () => (
   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +51,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="px-4 sm:px-6 lg:px-8 flex h-14 items-center">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-14 items-center">
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2">
                <Logo />
@@ -71,37 +73,53 @@ export default function LandingPage() {
 
       <main>
         <section className="py-20 md:py-32">
-          <div className="px-4 sm:px-6 lg:px-8 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-                The Future of Team Scheduling is Here
-              </h1>
-              <p className="mt-4 max-w-3xl mx-auto text-lg text-muted-foreground">
-                RotaPro simplifies complex scheduling. Generate fair, optimized rotas, manage your team, and keep everyone in sync—effortlessly.
-              </p>
-              <div className="mt-8 flex justify-center gap-4">
-                <Button asChild size="lg">
-                  <Link href="/signup">Get Started for Free</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                   <Link href="/login">Login</Link>
-                </Button>
-              </div>
-            </motion.div>
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl">
+                    The Future of Team Scheduling is Here
+                  </h1>
+                  <p className="mt-4 text-lg text-muted-foreground">
+                    RotaPro simplifies complex scheduling. Generate fair, optimized rotas, manage your team, and keep everyone in sync—effortlessly.
+                  </p>
+                  <div className="mt-8 flex justify-start gap-4">
+                    <Button asChild size="lg">
+                      <Link href="/signup">Get Started for Free</Link>
+                    </Button>
+                    <Button asChild size="lg" variant="outline">
+                       <Link href="/login">Login</Link>
+                    </Button>
+                  </div>
+                </motion.div>
+                <motion.div
+                    className="relative h-64 md:h-96 rounded-xl border shadow-lg"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    <Image
+                        src="https://picsum.photos/seed/rotapro/1200/800"
+                        alt="RotaPro schedule dashboard"
+                        fill
+                        className="object-cover rounded-xl"
+                        data-ai-hint="team schedule"
+                    />
+                </motion.div>
+            </div>
           </div>
         </section>
 
         <section className="py-20 md:py-32 bg-secondary">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 max-w-2xl mx-auto">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
               <h2 className="text-3xl font-bold">Why RotaPro?</h2>
               <p className="mt-2 text-muted-foreground">Everything you need for efficient shift management.</p>
             </div>
-            <div className="grid gap-8 md:grid-cols-3 max-w-7xl mx-auto">
+            <div className="grid gap-8 md:grid-cols-3">
               {features.map((feature, i) => (
                 <motion.div
                   key={feature.title}
@@ -125,9 +143,12 @@ export default function LandingPage() {
       </main>
 
       <footer className="py-6 border-t">
-        <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
           <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
             Built by Your AI Assistant.
+          </p>
+          <p className="text-center text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} RotaPro. All rights reserved.
           </p>
         </div>
       </footer>
