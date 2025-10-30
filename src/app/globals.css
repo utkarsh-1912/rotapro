@@ -8,7 +8,7 @@
     --background: 210 25% 96.1%; /* #F0F4F8 */
     --foreground: 224 71% 4%;
     --card: 210 40% 100%;
-    --card-foreground: 224 71% 4%;
+    --card-foreground: 224- 71% 4%;
     --popover: 210 40% 100%;
     --popover-foreground: 224 71% 4%;
     --primary: 218 60% 44.1%; /* #2E5CB3 */
@@ -33,11 +33,11 @@
     --sidebar-accent-foreground: var(--secondary-foreground);
     --sidebar-border: var(--border);
     --sidebar-ring: var(--ring);
-    --chart-1: 218 60% 55%;
-    --chart-2: 200 70% 60%;
-    --chart-3: 218 40% 65%;
-    --chart-4: 200 50% 70%;
-    --chart-5: 218 30% 75%;
+    --chart-1: var(--primary);
+    --chart-2: var(--primary);
+    --chart-3: var(--primary);
+    --chart-4: var(--primary);
+    --chart-5: var(--primary);
   }
   .dark {
     --background: 224 71% 4%;
