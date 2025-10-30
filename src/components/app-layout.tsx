@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -19,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle, User as UserIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "./ui/dropdown-menu";
@@ -117,6 +118,11 @@ function LoggedInHeaderContent() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => router.push('/settings')}>
+              <UserIcon className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Log out
@@ -209,7 +215,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <Sidebar>
         <SidebarHeader>
             <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:hidden">
