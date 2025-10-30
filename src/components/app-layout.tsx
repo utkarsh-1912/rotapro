@@ -15,9 +15,10 @@ import {
   SidebarFooter,
   SidebarClose,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree } from "lucide-react";
+import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, PanelLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "./ui/dropdown-menu";
@@ -60,6 +61,31 @@ function ThemeToggle() {
     );
 }
 
+function AppHeaderContent() {
+  const { state: sidebarState, isMobile } = useSidebar();
+
+  if (isMobile) {
+    return <SidebarTrigger className="md:hidden"/>;
+  }
+
+  if (sidebarState === "collapsed") {
+    return (
+      <div className="flex items-center gap-2">
+        <SidebarTrigger />
+        <div className="flex items-center gap-2.5">
+            <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
+                <Logo />
+            </div>
+            <span className="text-lg font-semibold">RotaPro</span>
+        </div>
+      </div>
+    );
+  }
+
+  return <div />;
+}
+
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
@@ -87,13 +113,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:hidden">
               <div className="bg-primary text-primary-foreground rounded-lg flex items-center justify-center h-8 w-8">
                   <Logo />
               </div>
-              <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+              <div className="flex flex-col">
                   <span className="text-lg font-semibold">RotaPro</span>
               </div>
+            </div>
+             <div className="hidden group-data-[collapsible=icon]:flex">
+               <SidebarTrigger />
             </div>
           <SidebarClose />
         </SidebarHeader>
@@ -170,11 +199,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-14 items-center gap-4 border-b bg-background/50 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
-            <SidebarTrigger className="md:hidden"/>
-            <div className="w-full flex-1">
-                {/* Can add breadcrumbs or page title here */}
-            </div>
+        <header className="flex h-14 items-center justify-between gap-4 border-b bg-background/50 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
+            <AppHeaderContent />
             <ThemeToggle />
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
