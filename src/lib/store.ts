@@ -6,19 +6,12 @@ import { generateNewRotaAssignments } from "./rotaGenerator";
 
 const getInitialState = () => {
     return {
-        teamMembers: [
-            { id: "1", name: "Alice Johnson" },
-            { id: "2", name: "Bob Williams" },
-            { id: "3", name: "Charlie Brown" },
-            { id: "4", name: "Diana Miller" },
-            { id: "5", name: "Ethan Davis", fixedShiftId: "us" },
-            { id: "6", name: "Fiona Garcia" },
-        ],
+        teamMembers: [],
         shifts: [
-            { id: "apac", name: "APAC", startTime: "01:00", endTime: "09:00", color: "bg-blue-200" },
-            { id: "emea", name: "EMEA", startTime: "08:00", endTime: "16:00", color: "bg-amber-200" },
-            { id: "us", name: "US", startTime: "15:00", endTime: "23:00", color: "bg-indigo-200" },
-            { id: "late_emea", name: "LATE EMEA", startTime: "12:00", endTime: "20:00", color: "bg-emerald-200" },
+            { id: "apac", name: "APAC", startTime: "04:00", endTime: "14:00", color: "bg-blue-200" },
+            { id: "emea", name: "EMEA", startTime: "13:00", endTime: "23:00", color: "bg-amber-200" },
+            { id: "us", name: "US", startTime: "18:00", endTime: "04:00", color: "bg-indigo-200" },
+            { id: "late_emea", name: "LATE EMEA", startTime: "15:00", endTime: "01:00", color: "bg-emerald-200" },
         ],
         generationHistory: [],
         activeGenerationId: null,
