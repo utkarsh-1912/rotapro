@@ -62,7 +62,7 @@ export default function LandingPage() {
                       <Link href="/signup">Get Started for Free</Link>
                     </Button>
                     <Button asChild size="lg" variant="outline">
-                       <Link href="/login">Explore Features</Link>
+                       <Link href="#features">Explore Features</Link>
                     </Button>
                   </div>
                 </motion.div>
@@ -84,7 +84,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="py-20 md:py-32 bg-secondary">
+        <section id="features" className="py-20 md:py-32 bg-secondary">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold">Why RotaPro?</h2>
