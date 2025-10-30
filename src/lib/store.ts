@@ -1,16 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, ShiftStreak, TeamMember } from "./types";
-import { startOfWeek, addDays, formatISO } from "date-fns";
+import { startOfWeek, formatISO } from "date-fns";
 import { generateNewRotaAssignments } from "./rotaGenerator";
 
 const getInitialState = () => {
-    const startDate = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
-    const initialGeneration: RotaGeneration = {
-        id: new Date().getTime().toString(),
-        startDate: startDate,
-        assignments: {}
-    };
     return {
         teamMembers: [
             { id: "1", name: "Alice Johnson" },
@@ -26,8 +20,8 @@ const getInitialState = () => {
             { id: "us", name: "US", startTime: "15:00", endTime: "23:00", color: "bg-indigo-200" },
             { id: "late_emea", name: "LATE EMEA", startTime: "12:00", endTime: "20:00", color: "bg-emerald-200" },
         ],
-        generationHistory: [initialGeneration],
-        activeGenerationId: initialGeneration.id,
+        generationHistory: [],
+        activeGenerationId: null,
     }
 }
 
@@ -178,21 +172,10 @@ export const useRotaStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
        onRehydrateStorage: () => (state) => {
         if (state) {
-            const initialData = getInitialState();
-            // This ensures that on first load for a user, the initial rota is generated.
-            if (state.generationHistory.length === 1 && Object.keys(state.generationHistory[0].assignments).length === 0) {
-                const newAssignments = generateNewRotaAssignments(state.teamMembers, state.shifts, {});
-                const newGeneration: RotaGeneration = {
-                    ...initialData.generationHistory[0],
-                    assignments: newAssignments
-                };
-                state.generationHistory = [newGeneration];
-                state.activeGenerationId = newGeneration.id;
-            } else {
-                 const activeGen = state.generationHistory.find(g => g.id === state.activeGenerationId);
-                 if (!activeGen) {
-                     state.activeGenerationId = state.generationHistory.length > 0 ? state.generationHistory[state.generationHistory.length - 1].id : null;
-                 }
+            if (!state.activeGenerationId && state.generationHistory.length > 0) {
+              // If activeGenerationId is somehow null but history exists, set it to the latest.
+              const sortedHistory = [...state.generationHistory].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+              state.activeGenerationId = sortedHistory[0].id;
             }
         }
       }
@@ -201,6 +184,10 @@ export const useRotaStore = create<AppState>()(
 );
 
 export const useRotaStoreActions = () => useRotaStore(state => ({
+    addTeamMember: state.addTeamMember,
+    updateTeamMember: state.updateTeamMember,
+    deleteTeamMember: state.deleteTeamMember,
+    updateShift: state.updateShift,
     generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,
     deleteGeneration: state.deleteGeneration,

@@ -4,8 +4,16 @@ import { motion } from "framer-motion";
 import { RotaDashboard } from "@/components/rota-dashboard";
 import { GenerationHistory } from "@/components/generation-history";
 import { Separator } from "@/components/ui/separator";
+import { useRotaStore } from "@/lib/store";
+import { WelcomeDialog } from "@/components/welcome-dialog";
 
 export default function Home() {
+  const { generationHistory } = useRotaStore();
+
+  if (generationHistory.length === 0) {
+    return <WelcomeDialog />;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
