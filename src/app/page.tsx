@@ -62,7 +62,7 @@ export default function LandingPage() {
                       <Link href="/signup">Get Started for Free</Link>
                     </Button>
                     <Button asChild size="lg" variant="outline">
-                       <Link href="/login">Login</Link>
+                       <Link href="/login">Explore Features</Link>
                     </Button>
                   </div>
                 </motion.div>
