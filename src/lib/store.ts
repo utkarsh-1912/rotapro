@@ -1,11 +1,11 @@
-import React from "react";
+
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState, Rota, TeamMember, Shift } from "./types";
-import { addDays, format, startOfWeek } from "date-fns";
+import type { AppState } from "./types";
+import { startOfWeek } from "date-fns";
 import { generateNewRota, generateNextRota } from "./rotaGenerator";
 
-const useStore = create<AppState>()(
+export const useRotaStore = create<AppState>()(
   persist(
     (set, get) => ({
       teamMembers: [
@@ -42,12 +42,12 @@ const useStore = create<AppState>()(
 
       deleteTeamMember: (id) =>
         set((state) => {
-          const newRota = Object.entries(state.rota).reduce((acc, [date, assignments]) => {
-              const newAssignments = { ...assignments };
-              delete newAssignments[id];
-              acc[date] = newAssignments;
-              return acc;
-          }, {} as Rota);
+          const newRota = { ...state.rota };
+          // This simplified logic assumes we just need to remove the member,
+          // a full regeneration might be needed in a real app.
+          Object.keys(newRota).forEach(date => {
+            delete newRota[date][id];
+          });
           return {
             teamMembers: state.teamMembers.filter((member) => member.id !== id),
             rota: newRota,
@@ -74,7 +74,7 @@ const useStore = create<AppState>()(
 
       swapShifts: (memberId1, memberId2) => {
         set(state => {
-          const newRota: Rota = JSON.parse(JSON.stringify(state.rota));
+          const newRota = JSON.parse(JSON.stringify(state.rota));
           const { startDate } = state;
       
           const member1 = state.teamMembers.find(m => m.id === memberId1);
@@ -123,24 +123,14 @@ const useStore = create<AppState>()(
     {
       name: "rotapro-storage",
       storage: createJSONStorage(() => localStorage),
-      reviver: (key, value) => {
-        if (key === 'startDate' && typeof value === 'string') {
-          try {
-            return new Date(value).toISOString();
-          } catch (e) {
-            return startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
-          }
-        }
-        return value;
-      },
       // This function runs on rehydration
       onRehydrateStorage: () => (state) => {
         if (state) {
           const today = startOfWeek(new Date(), { weekStartsOn: 1 });
-          const rotaStartDate = startOfWeek(new Date(state.startDate), { weekStartsOn: 1 });
+          const rotaStartDate = state.startDate ? startOfWeek(new Date(state.startDate), { weekStartsOn: 1 }) : new Date(0);
 
-          // If the stored rota is from a past period, generate a new one for the current period.
-          if (rotaStartDate < today || Object.keys(state.rota).length === 0) {
+          // If the stored rota is from a past period, or is empty, generate a new one.
+          if (rotaStartDate.getTime() < today.getTime() || Object.keys(state.rota).length === 0) {
             const newStartDate = today.toISOString();
             const newRota = generateNewRota(state.teamMembers, state.shifts, newStartDate);
             state.startDate = newStartDate;
@@ -152,54 +142,7 @@ const useStore = create<AppState>()(
   )
 );
 
-export const useRotaStore = <T>(selector: (state: AppState) => T): T => {
-    const state = useStore(selector);
-    const [hydrated, setHydrated] = React.useState(false);
-
-    React.useEffect(() => {
-      setHydrated(true);
-      const unsub = useStore.persist.onRehydrateStorage(() => {
-        const { rota, generateRota, teamMembers, startDate } = useStore.getState();
-        const today = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const rotaStartDate = startOfWeek(new Date(startDate), { weekStartsOn: 1 });
-
-        if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
-          generateRota();
-        } else if (rotaStartDate < today) {
-          // If the rota is for a past week, regenerate for the current week.
-           useStore.setState({ startDate: today.toISOString() });
-           generateRota();
-        }
-      });
-      
-      // Initial check on mount
-       const { rota, generateRota, teamMembers, startDate } = useStore.getState();
-       if (Object.keys(rota).length === 0 && teamMembers.length > 0) {
-           generateRota();
-       }
-
-      return () => unsub();
-    }, []);
-
-    if (!hydrated) {
-        if (selector.toString().includes('startDate')) {
-            return startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString() as T;
-        }
-        const initialState = useStore.getState();
-        try {
-            const initialValue = selector(initialState);
-             if (Array.isArray(initialValue)) return [] as T;
-             if (typeof initialValue === 'object' && initialValue !== null) return initialValue;
-        } catch (e) {
-            // Fallback for complex selectors on initial load
-        }
-        return ({} as T);
-    }
-    
-    return state;
-}
-
-export const useRotaStoreActions = () => useStore(state => ({
+export const useRotaStoreActions = () => useRotaStore(state => ({
     addTeamMember: state.addTeamMember,
     updateTeamMember: state.updateTeamMember,
     deleteTeamMember: state.deleteTeamMember,
