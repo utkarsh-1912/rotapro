@@ -16,6 +16,7 @@ const SHIFT_ORDER: string[] = ['us', 'emea', 'apac', 'late_emea'];
 const getNextShiftId = (currentShiftId: string | null): string => {
   if (!currentShiftId) return SHIFT_ORDER[0];
   const currentIndex = SHIFT_ORDER.indexOf(currentShiftId);
+  if (currentIndex === -1) return SHIFT_ORDER[0]; // Fallback
   const nextIndex = (currentIndex + 1) % SHIFT_ORDER.length;
   return SHIFT_ORDER[nextIndex];
 }
@@ -33,11 +34,16 @@ export const generateNewRotaAssignments = (
     assignments[member.id] = member.fixedShiftId!;
   });
 
-  // 2. Members who MUST rotate (APAC/US for >1 period, others for >2)
+  // 2. Members who MUST rotate (APAC/US after 1 period, others after 2)
   const mustRotateMembers = unassignedMembers.filter(m => {
     const streak = shiftStreaks[m.id];
     if (!streak || !streak.shiftId) return false;
-    if ((streak.shiftId === 'apac' || streak.shiftId === 'us') && streak.count >= 1) return true;
+    
+    // Stricter rule for APAC/US: rotate after 1 period
+    if ((streak.shiftId === 'apac' || streak.shiftId === 'us') && streak.count >= 1) {
+        return true;
+    }
+    // Standard rule for other shifts: rotate after 2 periods
     return streak.count >= 2;
   });
 
@@ -51,7 +57,9 @@ export const generateNewRotaAssignments = (
   // 3. Try to continue streaks for members who don't have to rotate
   const continuingMembers = unassignedMembers.filter(m => {
       const streak = shiftStreaks[m.id];
-      return streak && streak.shiftId && streak.count < 2 && !(streak.shiftId === 'apac' || streak.shiftId === 'us');
+      if (!streak || !streak.shiftId) return false;
+      if ((streak.shiftId === 'apac' || streak.shiftId === 'us')) return false; // Don't continue APAC/US
+      return streak.count < 2;
   });
 
   continuingMembers.forEach(member => {
@@ -65,9 +73,14 @@ export const generateNewRotaAssignments = (
   requiredShifts.forEach(shiftId => {
     const assignedCount = Object.values(assignments).filter(s => s === shiftId).length;
     if (assignedCount < 1 && unassignedMembers.length > 0) {
-      // Find someone who wasn't just on that shift
-      let memberToAssign = unassignedMembers.find(m => shiftStreaks[m.id]?.shiftId !== shiftId);
-      if (!memberToAssign) memberToAssign = unassignedMembers[0]; // fallback if all were on it
+      // Find someone who wasn't just on an APAC/US shift if possible to avoid back-to-back high-demand shifts
+      let memberToAssign = unassignedMembers.find(m => {
+        const lastShift = shiftStreaks[m.id]?.shiftId;
+        // Should not have been on APAC if we are assigning US, and vice versa
+        return (shiftId === 'us' && lastShift !== 'apac') || (shiftId === 'apac' && lastShift !== 'us');
+      });
+      
+      if (!memberToAssign) memberToAssign = unassignedMembers[0]; // fallback if everyone was on a conflicting shift
 
       assignments[memberToAssign.id] = shiftId;
       unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
@@ -84,22 +97,12 @@ export const generateNewRotaAssignments = (
       unassignedMembers = unassignedMembers.filter(m => m.id !== memberToAssign!.id);
   }
 
-  // 6. Assign all remaining members to LATE EMEA
+  // 6. Assign all remaining members following the rotation order
   shuffle(unassignedMembers).forEach(member => {
-    const lastShiftId = shiftStreaks[member.id]?.shiftId;
-    let nextShiftId = getNextShiftId(lastShiftId);
-
-    // If their natural next shift is already filled by a required role, default them to LATE EMEA
-    const isNextShiftRequiredAndFilled = (nextShiftId === 'apac' || nextShiftId === 'us') && Object.values(assignments).includes(nextShiftId);
-    
-    if (isNextShiftRequiredAndFilled) {
-        assignments[member.id] = 'late_emea';
-    } else {
-        assignments[member.id] = nextShiftId;
-    }
+    assignments[member.id] = 'late_emea'; // Default remaining to LATE EMEA
   });
   
-  // Final balancing pass to ensure minimums
+  // Final balancing pass to ensure minimums are met
   const finalCounts = Object.values(assignments).reduce((acc, shiftId) => {
     if(shiftId) acc[shiftId] = (acc[shiftId] || 0) + 1;
     return acc;
@@ -107,10 +110,14 @@ export const generateNewRotaAssignments = (
 
   ['apac', 'us', 'emea'].forEach(shiftId => {
     if ((finalCounts[shiftId] || 0) < 1) {
-      const lateEmeaMembers = teamMembers.filter(m => assignments[m.id] === 'late_emea' && !m.fixedShiftId);
-      if (lateEmeaMembers.length > 0) {
-        const memberToMove = lateEmeaMembers[0];
-        assignments[memberToMove.id] = shiftId;
+      // Find someone from LATE EMEA to move
+      const memberToMove = Object.keys(assignments).find(memberId => 
+        assignments[memberId] === 'late_emea' && !teamMembers.find(m => m.id === memberId)?.fixedShiftId
+      );
+      if (memberToMove) {
+        assignments[memberToMove] = shiftId;
+        finalCounts[shiftId] = (finalCounts[shiftId] || 0) + 1;
+        finalCounts['late_emea'] = (finalCounts['late_emea'] || 1) - 1;
       }
     }
   });
