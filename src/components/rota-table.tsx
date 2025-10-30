@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -63,8 +64,8 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                               variant="secondary"
                               className="font-semibold text-base whitespace-nowrap"
                               style={{ 
-                                  backgroundColor: `hsl(${shift.color})`,
-                                  color: 'hsl(var(--primary-foreground))' 
+                                  backgroundColor: shift.color,
+                                  color: 'hsl(var(--card-foreground))' 
                               }}
                             >
                               {shift.name}

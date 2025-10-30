@@ -73,8 +73,8 @@ export function RotaMatrix() {
                                                     <Badge
                                                         variant="secondary"
                                                         style={{ 
-                                                            backgroundColor: `hsl(${shift.color})`,
-                                                            color: 'hsl(var(--primary-foreground))' 
+                                                            backgroundColor: shift.color,
+                                                            color: 'hsl(var(--card-foreground))' 
                                                         }}
                                                     >
                                                         {shift.name}
