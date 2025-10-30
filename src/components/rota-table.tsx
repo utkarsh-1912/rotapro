@@ -1,19 +1,15 @@
 "use client";
 
 import React from "react";
-import { useRotaStore, useRotaStoreActions } from "@/lib/store";
+import { useRotaStore } from "@/lib/store";
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "./ui/skeleton";
-import { Button } from "./ui/button";
-import { Pencil } from "lucide-react";
-import { EditAssignmentDialog } from "./edit-assignment-dialog";
 import type { TeamMember } from "@/lib/types";
 
 export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
   const { generationHistory, activeGenerationId, teamMembers: allTeamMembers, shifts } = useRotaStore();
   const [isMounted, setIsMounted] = React.useState(false);
-  const [editState, setEditState] = React.useState<{ open: boolean; member?: TeamMember; shiftId?: string }>({ open: false });
 
   React.useEffect(() => setIsMounted(true), []);
 
@@ -24,6 +20,7 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
   const teamMembersInRota = React.useMemo(() => {
     if (!activeGeneration) return allTeamMembers;
     const members = activeGeneration.teamMembersAtGeneration || allTeamMembers;
+    // Filter to only include members who have an assignment in this generation
     return members.filter(member => activeGeneration.assignments[member.id]);
   }, [activeGeneration, allTeamMembers]);
 
@@ -52,10 +49,6 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
     };
     return colorMap[colorName] || 'hsl(var(--muted))';
   }
-
-  const handleEditClick = (member: TeamMember, shiftId: string) => {
-    setEditState({ open: true, member, shiftId });
-  };
 
   return (
     <>
@@ -88,14 +81,6 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                             <div className="text-xs text-muted-foreground font-mono">
                               {shift.startTime} - {shift.endTime}
                             </div>
-                             <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handleEditClick(member, shift.id)}
-                            >
-                                <Pencil className="h-3 w-3" />
-                            </Button>
                           </div>
                         ) : (
                           <span className="text-muted-foreground">Not Assigned</span>
@@ -114,12 +99,6 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
             </TableBody>
           </Table>
       </div>
-      <EditAssignmentDialog 
-        open={editState.open}
-        onOpenChange={(open) => setEditState(prev => ({...prev, open}))}
-        member={editState.member}
-        currentShiftId={editState.shiftId}
-      />
     </>
   );
 });

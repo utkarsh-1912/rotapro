@@ -6,7 +6,7 @@ import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, CheckCircle } from "lucide-react";
+import { Trash2, CheckCircle, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { EditFullRotaDialog } from "./edit-full-rota-dialog";
 
 function ClientOnly({ children }: { children: React.ReactNode }) {
     const [hasMounted, setHasMounted] = React.useState(false);
@@ -37,11 +38,18 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 export function GenerationHistory() {
     const { generationHistory, activeGenerationId } = useRotaStore();
     const { deleteGeneration, setActiveGenerationId } = useRotaStoreActions();
+    const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+    const [editingGenerationId, setEditingGenerationId] = React.useState<string | null>(null);
 
     const sortedHistory = React.useMemo(() => 
         [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()),
         [generationHistory]
     );
+
+    const handleEditClick = (generationId: string) => {
+      setEditingGenerationId(generationId);
+      setEditDialogOpen(true);
+    }
 
     return (
         <Card>
@@ -78,28 +86,34 @@ export function GenerationHistory() {
                                             </ClientOnly>
                                         </div>
                                     </div>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0" onClick={e => e.stopPropagation()}>
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">Delete Rota</span>
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                   This action cannot be undone. This will permanently delete this rota generation.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => deleteGeneration(gen.id)}>
-                                                    Delete
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                    <div className="flex items-center">
+                                      <Button variant="ghost" size="icon" className="shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(gen.id); }}>
+                                          <Pencil className="h-4 w-4" />
+                                          <span className="sr-only">Edit Rota</span>
+                                      </Button>
+                                      <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0" onClick={e => e.stopPropagation()}>
+                                                  <Trash2 className="h-4 w-4" />
+                                                  <span className="sr-only">Delete Rota</span>
+                                              </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                     This action cannot be undone. This will permanently delete this rota generation.
+                                                  </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => deleteGeneration(gen.id)}>
+                                                      Delete
+                                                  </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
                                 </div>
                             )
                         }) : (
@@ -109,6 +123,13 @@ export function GenerationHistory() {
                         )}
                     </div>
                 </ScrollArea>
+                {editingGenerationId && (
+                  <EditFullRotaDialog
+                    open={editDialogOpen}
+                    onOpenChange={setEditDialogOpen}
+                    generationId={editingGenerationId}
+                  />
+                )}
             </CardContent>
         </Card>
     )

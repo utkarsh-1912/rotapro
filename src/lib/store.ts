@@ -116,15 +116,13 @@ export const useRotaStore = create<AppState>()(
             shift.id === id ? { ...shift, ...newShift } : shift
           ),
         })),
-
-      updateAssignment: (memberId, shiftId) => set(state => {
-        const { activeGenerationId, generationHistory } = state;
-        if (!activeGenerationId) return state;
+      
+      updateAssignmentsForGeneration: (generationId, newAssignments) => set(state => {
+        const { generationHistory } = state;
+        if (!generationId) return state;
 
         const newHistory = generationHistory.map(gen => {
-          if (gen.id === activeGenerationId) {
-            const newAssignments = { ...gen.assignments };
-            newAssignments[memberId] = shiftId;
+          if (gen.id === generationId) {
             return { ...gen, assignments: newAssignments };
           }
           return gen;
@@ -132,7 +130,7 @@ export const useRotaStore = create<AppState>()(
 
         return { generationHistory: newHistory };
       }),
-        
+
       generateNewRota: (startDate: Date) => {
         set(state => {
             let { teamMembers, shifts, generationHistory } = state;
@@ -241,5 +239,5 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     swapShifts: state.swapShifts,
     deleteGeneration: state.deleteGeneration,
     setActiveGenerationId: state.setActiveGenerationId,
-    updateAssignment: state.updateAssignment
+    updateAssignmentsForGeneration: state.updateAssignmentsForGeneration
 }));

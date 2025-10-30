@@ -43,7 +43,7 @@ export interface AppState {
   deleteTeamMember: (id: string) => void;
   addShift: (newShift: Omit<Shift, 'id' | 'color'>) => void;
   updateShift: (id: string, newShift: Partial<Omit<Shift, 'id' | 'color'>>) => void;
-  updateAssignment: (memberId: string, shiftId: string) => void;
+  updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments) => void;
   generateNewRota: (startDate: Date) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
