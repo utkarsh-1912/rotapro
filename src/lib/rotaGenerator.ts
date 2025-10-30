@@ -1,3 +1,4 @@
+
 import type { TeamMember, Shift, RotaAssignments, ShiftStreak } from "./types";
 
 function shuffle<T>(array: T[]): T[] {
@@ -152,7 +153,7 @@ export const generateNewRotaAssignments = (
 
   // 6. Final guarantee: Ensure no member is left unassigned
   teamMembers.forEach(member => {
-    if (!assignments[member.id]) {
+    if (!assignments[member.id] && !member.fixedShiftId) {
       const fallbackShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam) || sortedShifts[0];
       if (fallbackShift) {
         assignments[member.id] = fallbackShift.id;
