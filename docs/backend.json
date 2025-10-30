@@ -22,10 +22,6 @@
         "isAdmin": {
           "type": "boolean",
           "description": "Indicates if the user has admin privileges."
-        },
-        "teamMemberId": {
-          "type": "string",
-          "description": "Reference to TeamMember. (Relationship: User 1:1 TeamMember)"
         }
       },
       "required": [
@@ -38,8 +34,7 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "password"
     ]
   },
   "firestore": {
@@ -49,9 +44,9 @@
         "definition": {
           "entityName": "User",
           "schema": {
-            "$ref": "#/backend/entities/User"
+            "$ref": "#/entities/User"
           },
-          "description": "Stores user profiles.  Access is restricted to the user themselves.",
+          "description": "Stores user profiles. Access is restricted to the user themselves.",
           "params": [
             {
               "name": "userId",
@@ -59,24 +54,7 @@
             }
           ]
         }
-      },
-      {
-        "path": "/roles_admin/{userId}",
-        "definition": {
-          "entityName": "adminRole",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Uses Existence over Content to grant admin roles. If a document exists for a user ID, the user is an admin.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who is an admin."
-            }
-          ]
-        }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to manage users and roles in the RotaPro application, focusing on simplicity, security, and scalability. The primary goal is to ensure authorization independence, which means avoiding hierarchical authorization dependencies and enabling atomic operations. This is achieved by denormalizing authorization data where necessary.\n\nThe `users` collection stores user profiles. Access is restricted to the user themselves, ensuring data privacy. The `roles_admin` collection uses the Existence over Content pattern to define admin roles. If a document exists for a user ID in `roles_admin`, the user is considered an admin.\n\nAuthorization Independence is implemented by avoiding `get()` calls in the rules. For instance, if a subcollection needed to inherit access from a parent document, the necessary attributes (e.g., owner, members) from the parent would be copied into each document of the subcollection. This enables secure list operations (QAPs) without relying on filtering based on potentially mutable parent data. All collections share the same security posture, with data segregation based on access needs."
+    ]
   }
 }

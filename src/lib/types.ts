@@ -1,3 +1,5 @@
+import type { User } from "firebase/auth";
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -38,4 +40,20 @@ export interface AppState {
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;
+}
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  name: string;
+  isAdmin: boolean;
+};
+
+export interface AuthState {
+  user: User | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  setUser: (user: User | null) => void;
+  setProfile: (profile: UserProfile | null) => void;
+  setLoading: (loading: boolean) => void;
 }

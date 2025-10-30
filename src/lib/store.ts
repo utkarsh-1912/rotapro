@@ -7,12 +7,7 @@ import { generateNewRotaAssignments } from "./rotaGenerator";
 const getInitialState = () => {
     return {
         teamMembers: [],
-        shifts: [
-            { id: "apac", name: "APAC", startTime: "04:00", endTime: "14:00", color: "bg-blue-200" },
-            { id: "emea", name: "EMEA", startTime: "13:00", endTime: "23:00", color: "bg-amber-200" },
-            { id: "us", name: "US", startTime: "18:00", endTime: "04:00", color: "bg-indigo-200" },
-            { id: "late_emea", name: "LATE EMEA", startTime: "15:00", endTime: "01:00", color: "bg-emerald-200" },
-        ],
+        shifts: [],
         generationHistory: [],
         activeGenerationId: null,
     }
