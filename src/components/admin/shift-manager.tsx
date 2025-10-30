@@ -48,6 +48,7 @@ const shiftSchema = z.object({
 
 function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean) => void }) {
     const { addShift, updateShift } = useRotaStoreActions();
+    const teamMembers = useRotaStore((state) => state.teamMembers);
     const { toast } = useToast();
     const isEditMode = !!shift;
 
@@ -55,14 +56,15 @@ function ShiftForm({ shift, setOpen }: { shift?: Shift; setOpen: (open: boolean)
         resolver: zodResolver(shiftSchema),
         defaultValues: isEditMode ? {
             ...shift,
+            sequence: String(shift.sequence)
         } : {
             name: "",
             startTime: "09:00",
             endTime: "17:00",
-            sequence: 1,
+            sequence: "1",
             isExtreme: false,
             minTeam: 1,
-            maxTeam: 1,
+            maxTeam: Math.max(1, teamMembers.length),
         },
     });
 
