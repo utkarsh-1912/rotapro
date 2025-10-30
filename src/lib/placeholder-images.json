@@ -1,9 +1,9 @@
 {
   "landingHero": {
-    "src": "https://picsum.photos/seed/modern-desk/1200/800",
+    "src": "https://picsum.photos/seed/scheduling/1200/800",
     "width": 1200,
     "height": 800,
-    "alt": "Modern desk with a computer showing a schedule",
-    "hint": "modern desk"
+    "alt": "A person organizing a schedule on a calendar",
+    "hint": "scheduling calendar"
   }
 }
