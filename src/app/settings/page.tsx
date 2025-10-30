@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -27,7 +28,6 @@ import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { useAuthStore } from "@/lib/auth-store";
 import { motion } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, EyeOff } from "lucide-react";
 
 const profileSchema = z.object({
@@ -343,20 +343,10 @@ export default function SettingsPage() {
       transition={{ duration: 0.5 }}
       className="p-4 sm:p-6"
     >
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
-        <Tabs defaultValue="profile">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="password">Password</TabsTrigger>
-          </TabsList>
-          <TabsContent value="profile">
-            <ProfileForm />
-          </TabsContent>
-          <TabsContent value="password">
-            <PasswordForm />
-          </TabsContent>
-        </Tabs>
+      <div className="max-w-2xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold">Account Settings</h1>
+        <ProfileForm />
+        <PasswordForm />
       </div>
     </motion.div>
   );
