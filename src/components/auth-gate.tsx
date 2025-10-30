@@ -7,6 +7,8 @@ import { useUser } from "@/firebase/provider";
 import { doc, getFirestore, onSnapshot } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/about", "/contact", "/terms"];
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { setUser, setProfile, setLoading } = useAuthStore();
@@ -39,14 +41,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      // Allow access to landing, login, and signup pages
-      if (pathname !== "/" && pathname !== "/login" && pathname !== "/signup") {
+      // Allow access to public pages
+      if (!PUBLIC_PATHS.includes(pathname)) {
         router.replace(`/login?redirect=${pathname}`);
       }
     }
   }, [isUserLoading, user, router, pathname]);
 
-  if (isUserLoading) {
+  if (isUserLoading && !PUBLIC_PATHS.includes(pathname)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p>Loading...</p>
