@@ -5,10 +5,10 @@ import React from "react";
 import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, addDays, isWithinInterval, isSaturday } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
-import { Recycle, Download, ArrowRightLeft, LifeBuoy } from "lucide-react";
+import { Recycle, Download, ArrowRightLeft, LifeBuoy, CalendarDays } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
@@ -67,7 +67,7 @@ function getWeeklyBreakdown(gen: RotaGeneration) {
 
 
 export function RotaMatrix() {
-    const { generationHistory, shifts } = useRotaStore();
+    const { generationHistory, shifts, weekendRotas } = useRotaStore();
     const { swapShifts } = useRotaStoreActions();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
@@ -124,7 +124,7 @@ export function RotaMatrix() {
         return headers;
     }, [paginatedHistory]);
 
-    const handleExport = () => {
+    const handleMainExport = () => {
         if (generationHistory.length === 0) {
             toast({
                 variant: "destructive",
@@ -165,33 +165,30 @@ export function RotaMatrix() {
         });
     };
 
-    const findAndHandleSwapBack = (swapGenId: string, memberId1: string, memberId2: string) => {
-        const originalSwapGen = generationHistory.find(g => g.id === swapGenId);
-        if (!originalSwapGen) return;
-
-        const originalShiftForM1 = originalSwapGen.assignments[memberId2]; // Original shift for M1 was what M2 got
-        const originalShiftForM2 = originalSwapGen.assignments[memberId1];
-
-        const futureGens = generationHistory.filter(g => parseISO(g.startDate) >= parseISO(originalSwapGen.startDate));
-
-        for (const futureGen of futureGens) {
-            if (futureGen.assignments[memberId1] === originalShiftForM2 && futureGen.assignments[memberId2] === originalShiftForM1) {
-                // Found a swap back opportunity
-                swapShifts(memberId1, memberId2, futureGen.id);
-                 toast({
-                    title: "Swap Back Executed",
-                    description: `Shifts for rota period starting ${format(parseISO(futureGen.startDate), 'd MMM yyyy')} have been swapped back.`,
-                });
-                return;
-            }
+    const handleWeekendExport = () => {
+        if (weekendRotas.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Export Failed",
+                description: "There is no weekend rota history to export.",
+            });
+            return;
         }
+        
+        const sortedWeekendRotas = [...weekendRotas].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-        toast({
-            variant: "destructive",
-            title: "No Swap Back Found",
-            description: "No future rota was found where a direct swap-back was possible.",
+        const header = ["Weekend Start", "Assigned Member"];
+        const rows = sortedWeekendRotas.map(rota => {
+            const memberName = memberMap.get(rota.memberId)?.name || "Unknown";
+            return [format(parseISO(rota.date), 'yyyy-MM-dd'), memberName];
         });
-    }
+
+        downloadCsv([header, ...rows], "weekend-rota-history.csv");
+        toast({
+            title: "Export Successful",
+            description: "The complete weekend rota history has been downloaded as a CSV file.",
+        });
+    };
     
     return (
         <TooltipProvider>
@@ -203,7 +200,7 @@ export function RotaMatrix() {
                             Historical view of shift assignments for all team members across all rota periods.
                         </CardDescription>
                     </div>
-                    <Button variant="outline" onClick={handleExport} disabled={generationHistory.length === 0}>
+                    <Button variant="outline" onClick={handleMainExport} disabled={generationHistory.length === 0}>
                         <Download /> Export as CSV
                     </Button>
                 </CardHeader>
@@ -304,13 +301,13 @@ export function RotaMatrix() {
                                 <PaginationItem>
                                     <PaginationFirst 
                                         onClick={() => setCurrentPage(0)}
-                                        className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
                                     />
                                 </PaginationItem>
                                 <PaginationItem>
                                     <PaginationPrevious 
                                         onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} 
-                                        className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
                                     />
                                 </PaginationItem>
                                 <PaginationItem>
@@ -321,13 +318,13 @@ export function RotaMatrix() {
                                 <PaginationItem>
                                     <PaginationNext 
                                         onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
-                                        className={currentPage === pageCount - 1 ? "pointer-events-none opacity-50" : undefined}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
                                     />
                                 </PaginationItem>
                                 <PaginationItem>
                                     <PaginationLast 
                                         onClick={() => setCurrentPage(pageCount - 1)}
-                                        className={currentPage === pageCount - 1 ? "pointer-events-none opacity-50" : undefined}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
                                     />
                                 </PaginationItem>
                             </PaginationContent>
@@ -406,6 +403,137 @@ export function RotaMatrix() {
                         </Table>
                     </div>
                 </CardContent>
+                 {pageCount > 1 && (
+                    <CardFooter>
+                       <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationFirst 
+                                        onClick={() => setCurrentPage(0)}
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationPrevious 
+                                        onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} 
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span className="text-sm font-medium">
+                                        Page {currentPage + 1} of {pageCount}
+                                    </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationNext 
+                                        onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationLast 
+                                        onClick={() => setCurrentPage(pageCount - 1)}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </CardFooter>
+                )}
+            </Card>
+
+            <Card className="mt-6">
+                <CardHeader  className="flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2"><CalendarDays /> Weekend Rota Matrix</CardTitle>
+                        <CardDescription>
+                            Historical view of weekend duty assignments.
+                        </CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={handleWeekendExport} disabled={weekendRotas.length === 0}>
+                        <Download /> Export as CSV
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto rounded-lg border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
+                                    {paginatedHistory.map(gen => {
+                                        const startDate = parseISO(gen.startDate);
+                                        const endDate = parseISO(gen.endDate);
+                                        return (
+                                            <TableHead key={gen.id} className="text-center font-semibold whitespace-nowrap">
+                                                {format(startDate, 'd')} - {format(endDate, 'd MMM yyyy')}
+                                            </TableHead>
+                                        )
+                                    })}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {allHistoricalMembers.map(member => (
+                                    <TableRow key={member.id}>
+                                        <TableCell className="font-medium sticky left-0 bg-card z-10">{member.name}</TableCell>
+                                        {paginatedHistory.map(gen => {
+                                            const weekendAssignments = weekendRotas.filter(wr => wr.generationId === gen.id && wr.memberId === member.id);
+                                            const weekendDates = weekendAssignments.map(wa => format(parseISO(wa.date), 'd MMM')).join(', ');
+                                            return (
+                                                <TableCell key={gen.id} className="text-center text-xs">
+                                                    {weekendDates || <span className="text-muted-foreground">-</span>}
+                                                </TableCell>
+                                            )
+                                        })}
+                                    </TableRow>
+                                ))}
+                                {allHistoricalMembers.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={paginatedHistory.length + 1} className="text-center text-muted-foreground h-24">
+                                            No team members found.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+                 {pageCount > 1 && (
+                    <CardFooter>
+                       <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationFirst 
+                                        onClick={() => setCurrentPage(0)}
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationPrevious 
+                                        onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} 
+                                        className={cn("cursor-pointer", currentPage === 0 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span className="text-sm font-medium">
+                                        Page {currentPage + 1} of {pageCount}
+                                    </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationNext 
+                                        onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationLast 
+                                        onClick={() => setCurrentPage(pageCount - 1)}
+                                        className={cn("cursor-pointer", currentPage === pageCount - 1 && "pointer-events-none opacity-50")}
+                                    />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </CardFooter>
+                )}
             </Card>
 
              {swapHistory.length > 0 && (
@@ -461,3 +589,5 @@ export function RotaMatrix() {
         </TooltipProvider>
     )
 }
+
+    
