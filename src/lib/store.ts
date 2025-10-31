@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember } from "./types";
-import { startOfWeek, formatISO, parseISO, addDays } from "date-fns";
+import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember, AdhocAssignments, WeekendRota } from "./types";
+import { startOfWeek, formatISO, parseISO, addDays, startOfMonth, endOfMonth, eachWeekendOfInterval, getMonth } from "date-fns";
 import { generateNewRotaAssignments, balanceAssignments } from "./rotaGenerator";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,6 +24,8 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
         ],
         generationHistory: [],
         activeGenerationId: null,
+        weekendRotas: [],
+        lastWeekendAssigneeIndex: -1,
     }
 }
 
@@ -186,6 +188,16 @@ export const useRotaStore = create<AppState>()(
         });
       },
 
+      updateAdhocAssignments: (generationId, adhocAssignments, notes) => set(state => {
+        const newHistory = state.generationHistory.map(gen => {
+            if (gen.id === generationId) {
+                return { ...gen, adhoc: adhocAssignments, comments: notes };
+            }
+            return gen;
+        });
+        return { generationHistory: newHistory };
+      }),
+
       generateNewRota: (startDate: Date, rotaPeriodInWeeks: number = 2) => {
         set(state => {
             const { teamMembers, shifts, generationHistory } = state;
@@ -292,6 +304,56 @@ export const useRotaStore = create<AppState>()(
           set({ activeGenerationId: generationId });
       },
 
+      generateWeekendRota: (interval: { start: Date, end: Date }) => set(state => {
+        const { teamMembers, lastWeekendAssigneeIndex, weekendRotas } = state;
+        const flexibleMembers = teamMembers.filter(m => !m.fixedShiftId);
+        if (flexibleMembers.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Generation Failed",
+                description: "No flexible team members available for weekend rota."
+            });
+            return state;
+        }
+
+        const weekends = eachWeekendOfInterval(interval);
+        let assigneeIndex = lastWeekendAssigneeIndex;
+
+        const newRotas = weekends.map(weekendDay => {
+            assigneeIndex = (assigneeIndex + 1) % flexibleMembers.length;
+            return {
+                date: formatISO(weekendDay),
+                memberId: flexibleMembers[assigneeIndex].id
+            };
+        });
+        
+        toast({
+            title: "Weekend Rota Generated",
+            description: `Generated for ${format(interval.start, 'MMMM yyyy')}`
+        });
+
+        return {
+            weekendRotas: [...weekendRotas, ...newRotas],
+            lastWeekendAssigneeIndex: assigneeIndex
+        }
+      }),
+      deleteWeekendRota: (month: Date) => set(state => {
+        const monthToDelete = getMonth(month);
+        const yearToDelete = month.getFullYear();
+
+        const remainingRotas = state.weekendRotas.filter(rota => {
+            const rotaDate = new Date(rota.date);
+            return rotaDate.getMonth() !== monthToDelete || rotaDate.getFullYear() !== yearToDelete;
+        });
+
+        toast({
+            title: "Weekend Rota Deleted",
+            description: `Deleted for ${format(month, 'MMMM yyyy')}`
+        })
+
+        return { weekendRotas: remainingRotas };
+      }),
+
     }),
     {
       name: "rotapro-storage",
@@ -313,6 +375,11 @@ export const useRotaStore = create<AppState>()(
               const sortedHistory = [...state.generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
               state.activeGenerationId = sortedHistory[0].id;
             }
+
+            // Ensure lastWeekendAssigneeIndex is a number
+            if(typeof state.lastWeekendAssigneeIndex !== 'number') {
+                state.lastWeekendAssigneeIndex = -1;
+            }
         }
       }
     }
@@ -332,4 +399,7 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     setActiveGenerationId: state.setActiveGenerationId,
     updateAssignmentsForGeneration: state.updateAssignmentsForGeneration,
     updateAssignment: state.updateAssignment,
+    updateAdhocAssignments: state.updateAdhocAssignments,
+    generateWeekendRota: state.generateWeekendRota,
+    deleteWeekendRota: state.deleteWeekendRota,
 }));

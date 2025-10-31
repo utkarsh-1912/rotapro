@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { useRotaStore } from "@/lib/store";
+import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -18,15 +18,21 @@ import { useToast } from "@/hooks/use-toast";
 import { SupportRotaExportImage } from "@/components/support-rota-export-image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { AdhocAssignments } from "@/lib/types";
 
 
-type AdhocStatus = Record<string, Record<number, boolean>>;
 type AdhocNotes = Record<string, string>;
 
 export default function SupportRotaPage() {
   const { generationHistory, activeGenerationId, shifts } = useRotaStore();
+  const { updateAdhocAssignments } = useRotaStoreActions();
   const [selectedGenerationId, setSelectedGenerationId] = React.useState<string | null>(activeGenerationId);
-  const [adhocStatus, setAdhocStatus] = React.useState<AdhocStatus>({});
+  
+  const selectedGeneration = React.useMemo(() =>
+    generationHistory.find(g => g.id === selectedGenerationId)
+  , [generationHistory, selectedGenerationId]);
+
+  const [adhocStatus, setAdhocStatus] = React.useState<AdhocAssignments>({});
   const [adhocNotes, setAdhocNotes] = React.useState<AdhocNotes>({});
   const [isExportDialogOpen, setExportDialogOpen] = React.useState(false);
   const { toast } = useToast();
@@ -34,35 +40,45 @@ export default function SupportRotaPage() {
 
   React.useEffect(() => {
     // When the active rota changes elsewhere, update the selection here if it was the one selected
-    if (activeGenerationId) {
+    if (activeGenerationId && !selectedGenerationId) {
         setSelectedGenerationId(activeGenerationId);
     }
-  }, [activeGenerationId]);
+  }, [activeGenerationId, selectedGenerationId]);
+
+  React.useEffect(() => {
+    if (selectedGeneration) {
+        setAdhocStatus(selectedGeneration.adhoc || {});
+        setAdhocNotes(selectedGeneration.comments || {});
+    }
+  }, [selectedGeneration])
 
   const sortedHistory = React.useMemo(() => 
     [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()),
     [generationHistory]
   );
 
-  const selectedGeneration = React.useMemo(() =>
-    sortedHistory.find(g => g.id === selectedGenerationId)
-  , [sortedHistory, selectedGenerationId]);
-
   const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
   
   const handleAdhocChange = (memberId: string, weekIndex: number) => {
-    setAdhocStatus(prev => ({
-        ...prev,
-        [memberId]: {
-            ...(prev[memberId] || {}),
-            [weekIndex]: !prev[memberId]?.[weekIndex]
-        }
-    }));
+    setAdhocStatus(prev => {
+        const memberAdhoc = { ...(prev[memberId] || {}) };
+        memberAdhoc[weekIndex] = !memberAdhoc[weekIndex];
+        return { ...prev, [memberId]: memberAdhoc };
+    });
   };
 
   const handleNoteChange = (memberId: string, note: string) => {
     setAdhocNotes(prev => ({ ...prev, [memberId]: note }));
   };
+
+  const handleSaveChanges = () => {
+    if (!selectedGenerationId) return;
+    updateAdhocAssignments(selectedGenerationId, adhocStatus, adhocNotes);
+    toast({
+        title: "Changes Saved",
+        description: "Your ad-hoc support assignments have been saved."
+    })
+  }
 
   if (!selectedGeneration) {
     return (
@@ -124,20 +140,22 @@ export default function SupportRotaPage() {
     const filename = `support-rota-${format(startDate, "yyyy-MM-dd")}`;
 
     if (formatType === 'csv') {
-        const headers = ["Team Member", "Main Shift", "Ad-hoc Note"];
+        const headers = ["Team Member", "Main Shift"];
         weeks.forEach((week, index) => {
           headers.push(`On Ad-hoc (Week ${index + 1} - ${format(week.start, 'd MMM')})`);
         });
+        headers.push("Ad-hoc Note");
 
         const rows = teamMembersInRota.map(member => {
             const shiftId = selectedGeneration.assignments[member.id];
             const shift = shiftId ? shiftMap.get(shiftId) : null;
-            const row: (string | boolean)[] = [member.name, shift ? shift.name : "Off", adhocNotes[member.id] || ""];
+            const row: (string | boolean)[] = [member.name, shift ? shift.name : "Off"];
 
             weeks.forEach((_, weekIndex) => {
                 const isOnAdhoc = !!adhocStatus[member.id]?.[weekIndex];
                 row.push(isOnAdhoc);
             });
+            row.push(adhocNotes[member.id] || "");
             return row;
         });
         
@@ -213,37 +231,40 @@ export default function SupportRotaPage() {
               </Select>
             </div>
           </div>
-           <Dialog open={isExportDialogOpen} onOpenChange={setExportDialogOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" disabled={!selectedGeneration}><Download /> Export</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Export Support Rota</DialogTitle>
-                <DialogDescription>Choose the format to export your ad-hoc support rota.</DialogDescription>
-              </DialogHeader>
-              <div className="flex justify-center gap-4 py-4">
-                <Button variant="outline" onClick={() => handleExport('csv')} className="flex-1">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Export as CSV
-                </Button>
-                <Button variant="outline" onClick={() => handleExport('png')} className="flex-1">
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    Export as Image
-                </Button>
-              </div>
-                <div className="absolute -left-[9999px] top-0">
-                    <SupportRotaExportImage 
-                        ref={exportImageRef} 
-                        activeGeneration={selectedGeneration}
-                        teamMembersInRota={teamMembersInRota}
-                        weeks={weeks}
-                        adhocStatus={adhocStatus}
-                        adhocNotes={adhocNotes}
-                    />
+          <div className="flex items-center gap-2">
+            <Button onClick={handleSaveChanges}>Save Changes</Button>
+            <Dialog open={isExportDialogOpen} onOpenChange={setExportDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" disabled={!selectedGeneration}><Download /> Export</Button>
+                </DialogTrigger>
+                <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Export Support Rota</DialogTitle>
+                    <DialogDescription>Choose the format to export your ad-hoc support rota.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center gap-4 py-4">
+                    <Button variant="outline" onClick={() => handleExport('csv')} className="flex-1">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as CSV
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExport('png')} className="flex-1">
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Export as Image
+                    </Button>
                 </div>
-            </DialogContent>
-          </Dialog>
+                    <div className="absolute -left-[9999px] top-0">
+                        <SupportRotaExportImage 
+                            ref={exportImageRef} 
+                            activeGeneration={selectedGeneration}
+                            teamMembersInRota={teamMembersInRota}
+                            weeks={weeks}
+                            adhocStatus={adhocStatus}
+                            adhocNotes={adhocNotes}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -322,5 +343,3 @@ export default function SupportRotaPage() {
     </motion.div>
   );
 }
-
-    

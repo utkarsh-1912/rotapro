@@ -27,6 +27,10 @@ export type ManualSwap = {
     memberId2: string;
 }
 
+// Adhoc status for a rota generation
+// Member ID -> Week Index -> isSelected
+export type AdhocAssignments = Record<string, Record<number, boolean>>;
+
 // A single generated rota period
 export interface RotaGeneration {
   id: string; // Unique ID for this generation, e.g., a timestamp
@@ -37,6 +41,12 @@ export interface RotaGeneration {
   manualOverrides?: string[]; // Array of member IDs that have been manually changed
   manualSwaps?: ManualSwap[]; // Array of swaps that occurred
   comments?: Record<string, string>; // Comments for a member's assignment
+  adhoc?: AdhocAssignments; // Ad-hoc support assignments
+}
+
+export type WeekendRota = {
+  date: string; // ISO string for the weekend day
+  memberId: string;
 }
 
 // Tracks how many consecutive periods a member has had the same shift
@@ -47,6 +57,8 @@ export interface AppState {
   shifts: Shift[];
   generationHistory: RotaGeneration[];
   activeGenerationId: string | null;
+  weekendRotas: WeekendRota[];
+  lastWeekendAssigneeIndex: number;
   addTeamMember: (name: string, fixedShiftId?: string) => void;
   updateTeamMember: (id: string, updates: Partial<Pick<TeamMember, 'name' | 'fixedShiftId'>>) => void;
   deleteTeamMember: (id: string) => void;
@@ -59,6 +71,9 @@ export interface AppState {
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;
   updateAssignment: (memberId: string, newShiftId: string) => void;
+  updateAdhocAssignments: (generationId: string, adhocAssignments: AdhocAssignments, notes: Record<string, string>) => void;
+  generateWeekendRota: (interval: { start: Date, end: Date }) => void;
+  deleteWeekendRota: (month: Date) => void;
 }
 
 export type UserProfile = {

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
-import { Recycle, Download, ArrowRightLeft } from "lucide-react";
+import { Recycle, Download, ArrowRightLeft, LifeBuoy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
@@ -299,6 +299,60 @@ export function RotaMatrix() {
                         </Pagination>
                     </CardFooter>
                 )}
+            </Card>
+
+            <Card className="mt-6">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><LifeBuoy /> Ad-hoc Support Matrix</CardTitle>
+                    <CardDescription>
+                        Historical view of ad-hoc support assignments.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto rounded-lg border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
+                                     {paginatedHistory.map(gen => {
+                                        const startDate = parseISO(gen.startDate);
+                                        const endDate = parseISO(gen.endDate);
+                                        return (
+                                            <TableHead key={gen.id} className="text-center font-semibold whitespace-nowrap">
+                                                {format(startDate, 'd')} - {format(endDate, 'd MMM yyyy')}
+                                            </TableHead>
+                                        )
+                                    })}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                 {allHistoricalMembers.map(member => (
+                                    <TableRow key={member.id}>
+                                        <TableCell className="font-medium sticky left-0 bg-card z-10">{member.name}</TableCell>
+                                        {paginatedHistory.map(gen => {
+                                            const adhocAssignments = gen.adhoc || {};
+                                            const memberAdhoc = adhocAssignments[member.id];
+                                            const wasOnAdhoc = memberAdhoc && Object.values(memberAdhoc).some(v => v);
+
+                                            return (
+                                                <TableCell key={gen.id} className="text-center text-xs">
+                                                   {wasOnAdhoc ? <Badge>On Duty</Badge> : <span className="text-muted-foreground">-</span>}
+                                                </TableCell>
+                                            )
+                                        })}
+                                    </TableRow>
+                                ))}
+                                {allHistoricalMembers.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={paginatedHistory.length + 1} className="text-center text-muted-foreground h-24">
+                                            No team members found.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
             </Card>
 
              {swapHistory.length > 0 && (
