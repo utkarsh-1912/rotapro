@@ -69,12 +69,13 @@ export const generateNewRotaAssignments = (
   });
 
   if (flexibleMembers.length >= sortedShifts.length) {
+    // New logic for when there are enough or more people than shifts
     flexibleMembers.forEach(member => {
         const lastShiftId = shiftStreaks[member.id]?.shiftId;
         const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
         let assigned = false;
 
-        // Priority 1: Try to move to the ideal next shift
+        // Priority 1: Try to move to the ideal next shift (+1)
         const idealNextShift = getNextShift(lastShiftId, sortedShifts);
         if (isTransitionAllowed(lastShift, idealNextShift) && assignedCounts[idealNextShift.id] < idealNextShift.maxTeam) {
             assignments[member.id] = idealNextShift.id;
@@ -82,28 +83,16 @@ export const generateNewRotaAssignments = (
             assigned = true;
         }
 
-        // Priority 2: If not possible, try to stay on the same shift (if not extreme)
+        // Priority 2: If not possible, try to stay on the same shift (if not extreme and has capacity)
         if (!assigned && lastShift && !lastShift.isExtreme && assignedCounts[lastShift.id] < lastShift.maxTeam) {
             assignments[member.id] = lastShift.id;
             assignedCounts[lastShift.id]++;
             assigned = true;
         }
-
-        // Priority 3: Find the next available forward shift
-        if (!assigned) {
-            let searchShift = idealNextShift;
-            for (let i = 0; i < sortedShifts.length; i++) {
-                if (isTransitionAllowed(lastShift, searchShift) && assignedCounts[searchShift.id] < searchShift.maxTeam) {
-                    assignments[member.id] = searchShift.id;
-                    assignedCounts[searchShift.id]++;
-                    assigned = true;
-                    break;
-                }
-                searchShift = getNextShift(searchShift.id, sortedShifts);
-            }
-        }
     });
-
+    
+    // Any members that couldn't be placed will be handled by balanceAssignments
+    
   } else {
     // Existing logic for when there are fewer people than shifts
     const mustRotate: TeamMember[] = [];
@@ -282,6 +271,21 @@ export const balanceAssignments = (
             continue;
         }
         
+        // Handle unassigned members if any exist
+        const unassignedMembers = teamMembers.filter(m => !m.fixedShiftId && !balancedAssignments[m.id]);
+        if(unassignedMembers.length > 0 && understaffedShifts.length > 0) {
+            const memberToAssign = unassignedMembers[0];
+            const targetShift = understaffedShifts[0];
+            const lastShift = shiftStreaks[memberToAssign.id]?.shiftId ? shiftMap.get(shiftStreaks[memberToAssign.id].shiftId!) : undefined;
+            if(isTransitionAllowed(lastShift, targetShift)) {
+                balancedAssignments[memberToAssign.id] = targetShift.id;
+                shiftCounts = calculateCounts();
+                loops++;
+                continue;
+            }
+        }
+
+
         console.warn("Could not fully balance shifts. Check constraints vs. team size.", { understaffedShifts, overstaffedShifts });
         break;
     }
