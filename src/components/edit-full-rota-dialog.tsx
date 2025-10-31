@@ -18,12 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import type { Shift, TeamMember, RotaAssignments } from "@/lib/types";
+import type { RotaAssignments } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Table, TableBody, TableCell, TableRow } from "./ui/table";
+import { Label } from "./ui/label";
 
 type EditFullRotaDialogProps = {
   open: boolean;
@@ -37,6 +39,7 @@ export function EditFullRotaDialog({ open, onOpenChange, generationId }: EditFul
   const { toast } = useToast();
   
   const [currentAssignments, setCurrentAssignments] = React.useState<RotaAssignments>({});
+  const [comments, setComments] = React.useState<Record<string, string>>({});
   const [warnings, setWarnings] = React.useState<string[]>([]);
   
   const targetGeneration = React.useMemo(() => 
@@ -70,9 +73,11 @@ export function EditFullRotaDialog({ open, onOpenChange, generationId }: EditFul
   React.useEffect(() => {
     if (open && targetGeneration) {
       setCurrentAssignments(targetGeneration.assignments);
+      setComments(targetGeneration.comments || {});
       calculateWarnings(targetGeneration.assignments);
     } else {
       setCurrentAssignments({});
+      setComments({});
       setWarnings([]);
     }
   }, [open, targetGeneration]);
@@ -83,8 +88,12 @@ export function EditFullRotaDialog({ open, onOpenChange, generationId }: EditFul
     calculateWarnings(newAssignments);
   };
 
+  const handleCommentChange = (memberId: string, text: string) => {
+    setComments(prev => ({...prev, [memberId]: text}));
+  }
+
   const handleSave = () => {
-    updateAssignmentsForGeneration(generationId, currentAssignments);
+    updateAssignmentsForGeneration(generationId, currentAssignments, comments);
     toast({
       title: "Rota Updated",
       description: `The rota has been successfully updated.`,
@@ -96,7 +105,7 @@ export function EditFullRotaDialog({ open, onOpenChange, generationId }: EditFul
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Rota Assignments</DialogTitle>
           <DialogDescription>
@@ -105,32 +114,33 @@ export function EditFullRotaDialog({ open, onOpenChange, generationId }: EditFul
         </DialogHeader>
         
         <ScrollArea className="max-h-[60vh] pr-4">
-          <Table>
-            <TableBody>
-              {teamMembers.map(member => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>
-                    <Select 
-                      value={currentAssignments[member.id] || ""}
-                      onValueChange={(newShiftId) => handleAssignmentChange(member.id, newShiftId)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a shift" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortedShifts.map((shift) => (
-                          <SelectItem key={shift.id} value={shift.id}>
-                            {shift.name} ({shift.startTime} - {shift.endTime})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-4">
+            {teamMembers.map(member => (
+              <div key={member.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border p-3 rounded-md">
+                <Label className="font-medium">{member.name}</Label>
+                <Select 
+                    value={currentAssignments[member.id] || ""}
+                    onValueChange={(newShiftId) => handleAssignmentChange(member.id, newShiftId)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a shift" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedShifts.map((shift) => (
+                        <SelectItem key={shift.id} value={shift.id}>
+                          {shift.name} ({shift.startTime} - {shift.endTime})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                </Select>
+                <Input 
+                  placeholder="Add a comment (optional)"
+                  value={comments[member.id] || ''}
+                  onChange={(e) => handleCommentChange(member.id, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
         </ScrollArea>
         
         {warnings.length > 0 && (

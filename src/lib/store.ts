@@ -140,7 +140,7 @@ export const useRotaStore = create<AppState>()(
         });
       },
 
-      updateAssignmentsForGeneration: (generationId, newAssignments) => set(state => {
+      updateAssignmentsForGeneration: (generationId, newAssignments, newComments) => set(state => {
         const { generationHistory } = state;
         if (!generationId) return state;
 
@@ -155,7 +155,12 @@ export const useRotaStore = create<AppState>()(
               }
             });
 
-            return { ...gen, assignments: newAssignments, manualOverrides: Array.from(updatedOverrides) };
+            return { 
+                ...gen, 
+                assignments: newAssignments, 
+                comments: newComments,
+                manualOverrides: Array.from(updatedOverrides) 
+            };
           }
           return gen;
         });
@@ -224,6 +229,7 @@ export const useRotaStore = create<AppState>()(
                 teamMembersAtGeneration: [...teamMembers],
                 manualOverrides: [],
                 manualSwaps: [],
+                comments: {},
             };
 
             const newHistory = [...generationHistory, newGeneration];

@@ -36,6 +36,7 @@ export interface RotaGeneration {
   teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
   manualOverrides?: string[]; // Array of member IDs that have been manually changed
   manualSwaps?: ManualSwap[]; // Array of swaps that occurred
+  comments?: Record<string, string>; // Comments for a member's assignment
 }
 
 // Tracks how many consecutive periods a member has had the same shift
@@ -52,7 +53,7 @@ export interface AppState {
   addShift: (newShift: Omit<Shift, 'id' | 'color'>) => void;
   updateShift: (id: string, newShift: Partial<Omit<Shift, 'id' | 'color'>>) => void;
   deleteShift: (id: string) => void;
-  updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments) => void;
+  updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments, comments: Record<string, string>) => void;
   generateNewRota: (startDate: Date, rotaPeriodInWeeks: number) => void;
   swapShifts: (memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
