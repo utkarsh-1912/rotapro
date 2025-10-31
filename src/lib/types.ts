@@ -1,3 +1,4 @@
+
 import type { User } from "firebase/auth";
 
 export interface TeamMember {
@@ -47,6 +48,7 @@ export interface RotaGeneration {
 export type WeekendRota = {
   date: string; // ISO string for the weekend day
   memberId: string;
+  generationId: string; // Link back to the main rota generation
 }
 
 // Tracks how many consecutive periods a member has had the same shift
@@ -72,8 +74,8 @@ export interface AppState {
   setActiveGenerationId: (generationId: string | null) => void;
   updateAssignment: (memberId: string, newShiftId: string) => void;
   updateAdhocAssignments: (generationId: string, adhocAssignments: AdhocAssignments, notes: Record<string, string>) => void;
-  generateWeekendRota: (interval: { start: Date, end: Date }) => void;
-  deleteWeekendRota: (month: Date) => void;
+  generateWeekendRota: (generationId: string) => void;
+  deleteWeekendRotaForPeriod: (generationId: string) => void;
 }
 
 export type UserProfile = {

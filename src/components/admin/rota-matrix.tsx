@@ -5,7 +5,7 @@ import React from "react";
 import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
 import { Recycle, Download, ArrowRightLeft, LifeBuoy } from "lucide-react";
@@ -14,6 +14,7 @@ import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { RotaGeneration, Shift, TeamMember } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, Shift>, memberMap: Map<string, TeamMember>) {
     if (!gen.manualSwaps || gen.manualSwaps.length === 0) {
@@ -41,9 +42,27 @@ function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, Shift>, membe
 
     return {
         members: `${member1.name} & ${member2.name}`,
-        shifts: `${member1OriginalShift.name} ↔ ${member2OriginalShift.name}`, // Show original shifts
         netEffect
     };
+}
+
+function getWeeklyBreakdown(gen: RotaGeneration) {
+    const startDate = parseISO(gen.startDate);
+    const endDate = parseISO(gen.endDate);
+    
+    const weeks = [];
+    let currentWeekStart = startOfWeek(startDate, { weekStartsOn: 1 });
+
+    while(currentWeekStart <= endDate) {
+        const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+        weeks.push({
+            start: currentWeekStart,
+            end: currentWeekEnd > endDate ? endDate : currentWeekEnd,
+            weekIndex: weeks.length
+        });
+        currentWeekStart = addDays(currentWeekStart, 7);
+    }
+    return weeks;
 }
 
 
@@ -88,6 +107,22 @@ export function RotaMatrix() {
             .filter(item => item.details !== null),
         [sortedHistory, shiftMap, memberMap]
     );
+
+    const supportMatrixHeaders = React.useMemo(() => {
+        const headers: {label: string, genId: string, weekIndex: number, isLastInGroup: boolean}[] = [];
+        paginatedHistory.forEach((gen, genIndex) => {
+            const weeks = getWeeklyBreakdown(gen);
+            weeks.forEach((week, weekIndex) => {
+                headers.push({
+                    label: `${format(week.start, 'd')}-${format(week.end, 'd MMM')}`,
+                    genId: gen.id,
+                    weekIndex: week.weekIndex,
+                    isLastInGroup: weekIndex === weeks.length - 1 && genIndex < paginatedHistory.length - 1
+                });
+            });
+        });
+        return headers;
+    }, [paginatedHistory]);
 
     const handleExport = () => {
         if (generationHistory.length === 0) {
@@ -305,38 +340,56 @@ export function RotaMatrix() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><LifeBuoy /> Ad-hoc Support Matrix</CardTitle>
                     <CardDescription>
-                        Historical view of ad-hoc support assignments.
+                        Historical view of weekly ad-hoc support assignments and notes.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto rounded-lg border">
                         <Table>
-                            <TableHeader>
+                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="font-semibold sticky left-0 bg-card z-10">Member</TableHead>
-                                     {paginatedHistory.map(gen => {
-                                        const startDate = parseISO(gen.startDate);
-                                        const endDate = parseISO(gen.endDate);
-                                        return (
-                                            <TableHead key={gen.id} className="text-center font-semibold whitespace-nowrap">
-                                                {format(startDate, 'd')} - {format(endDate, 'd MMM yyyy')}
-                                            </TableHead>
-                                        )
-                                    })}
+                                    <TableHead className="font-semibold sticky left-0 bg-card z-10 min-w-[120px]">Member</TableHead>
+                                     {supportMatrixHeaders.map(header => (
+                                        <TableHead 
+                                            key={`${header.genId}-${header.weekIndex}`} 
+                                            className={cn(
+                                                "text-center font-semibold whitespace-nowrap p-2",
+                                                header.isLastInGroup && "border-r-2 border-border"
+                                            )}
+                                        >
+                                            {header.label}
+                                        </TableHead>
+                                    ))}
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
+                             <TableBody>
                                  {allHistoricalMembers.map(member => (
                                     <TableRow key={member.id}>
                                         <TableCell className="font-medium sticky left-0 bg-card z-10">{member.name}</TableCell>
-                                        {paginatedHistory.map(gen => {
-                                            const adhocAssignments = gen.adhoc || {};
+                                        {supportMatrixHeaders.map(header => {
+                                            const gen = paginatedHistory.find(g => g.id === header.genId);
+                                            const adhocAssignments = gen?.adhoc || {};
                                             const memberAdhoc = adhocAssignments[member.id];
-                                            const wasOnAdhoc = memberAdhoc && Object.values(memberAdhoc).some(v => v);
+                                            const isOnAdhoc = memberAdhoc && memberAdhoc[header.weekIndex];
+                                            const adhocNotes = gen?.comments || {};
+                                            const note = adhocNotes[member.id];
 
                                             return (
-                                                <TableCell key={gen.id} className="text-center text-xs">
-                                                   {wasOnAdhoc ? <Badge>On Duty</Badge> : <span className="text-muted-foreground">-</span>}
+                                                <TableCell 
+                                                    key={`${header.genId}-${header.weekIndex}`} 
+                                                    className={cn(
+                                                        "text-center text-xs p-2",
+                                                        header.isLastInGroup && "border-r-2 border-border"
+                                                    )}
+                                                >
+                                                   {isOnAdhoc ? (
+                                                       <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <Badge>{note ? "Note" : "On Duty"}</Badge>
+                                                          </TooltipTrigger>
+                                                          {note && <TooltipContent><p>{note}</p></TooltipContent>}
+                                                        </Tooltip>
+                                                   ) : <span className="text-muted-foreground">-</span>}
                                                 </TableCell>
                                             )
                                         })}
@@ -344,7 +397,7 @@ export function RotaMatrix() {
                                 ))}
                                 {allHistoricalMembers.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={paginatedHistory.length + 1} className="text-center text-muted-foreground h-24">
+                                        <TableCell colSpan={supportMatrixHeaders.length + 1} className="text-center text-muted-foreground h-24">
                                             No team members found.
                                         </TableCell>
                                     </TableRow>
@@ -372,7 +425,6 @@ export function RotaMatrix() {
                                         <TableHead>Members Involved</TableHead>
                                         <TableHead>Shifts Swapped</TableHead>
                                         <TableHead>Net Effect</TableHead>
-                                        <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -381,36 +433,21 @@ export function RotaMatrix() {
                                         const endDate = parseISO(gen.endDate);
                                         const member1Id = gen.manualSwaps![0].memberId1;
                                         const member2Id = gen.manualSwaps![0].memberId2;
+                                        const shift1 = shiftMap.get(gen.assignments[member2Id])?.name || 'N/A';
+                                        const shift2 = shiftMap.get(gen.assignments[member1Id])?.name || 'N/A';
                                         return (
                                             <TableRow key={gen.id}>
                                                 <TableCell className="font-medium whitespace-nowrap">
                                                     {format(startDate, 'd MMM')} - {format(endDate, 'd MMM yyyy')}
                                                 </TableCell>
                                                 <TableCell>{details?.members}</TableCell>
-                                                <TableCell>{details?.shifts}</TableCell>
+                                                <TableCell>{`${shift1} ↔ ${shift2}`}</TableCell>
                                                 <TableCell>
                                                     {details?.netEffect !== 'neutral' && (
                                                         <Badge variant={details?.netEffect === 1 ? "default" : "destructive"}>
                                                             {details?.netEffect === 1 ? '+1' : '-1'}
                                                         </Badge>
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => findAndHandleSwapBack(gen.id, member1Id, member2Id)}
-                                                            >
-                                                                <Recycle className="h-4 w-4 mr-2" />
-                                                                Cancel Out
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>Find a future rota where these members can be swapped back to cancel the net effect.</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
                                                 </TableCell>
                                             </TableRow>
                                         );
