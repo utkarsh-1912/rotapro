@@ -26,7 +26,7 @@ export const SupportRotaExportImage = React.forwardRef<HTMLDivElement, SupportRo
         const title = `Ad-Hoc Support Rota: ${format(weeks[0].start, 'd MMM')} - ${format(weeks[weeks.length - 1].end, 'd MMM yyyy')}`;
 
         return (
-            <div ref={ref} className="p-8 bg-white text-black font-body w-[1200px]">
+            <div ref={ref} className="px-8 py-4 bg-white text-black font-body w-[1200px]">
                 <h2 className="text-2xl font-bold text-center mb-6">{title}</h2>
                 <div className="border rounded-lg">
                     <Table>

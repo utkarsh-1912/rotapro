@@ -24,7 +24,7 @@ export const RotaExportImage = React.forwardRef<HTMLDivElement, RotaExportImageP
         const commentEntries = Object.entries(comments).filter(([_, comment]) => comment.trim() !== "");
 
         return (
-            <div ref={ref} className="p-8 bg-white text-black font-body w-[1200px]">
+            <div ref={ref} className="px-8 py-4 bg-white text-black font-body w-[1200px]">
                 <h2 className="text-2xl font-bold text-center mb-6">{title}</h2>
                 <RotaTable />
                 {commentEntries.length > 0 && (
