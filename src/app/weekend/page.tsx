@@ -2,15 +2,13 @@
 "use client";
 
 import * as React from "react";
-import { useRotaStore, useRotaStoreActions } from "@/lib/store";
-import { Button } from "@/components/ui/button";
+import { useRotaStore } from "@/lib/store";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -28,18 +26,6 @@ import {
   isSaturday,
   addDays,
 } from "date-fns";
-import { Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -47,12 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CalendarDays } from "lucide-react";
 
 export default function WeekendRotaPage() {
   const { weekendRotas, teamMembers, generationHistory, activeGenerationId } =
     useRotaStore();
-  const { generateWeekendRota, deleteWeekendRotaForPeriod } =
-    useRotaStoreActions();
   const [selectedGenerationId, setSelectedGenerationId] =
     React.useState<string | null>(activeGenerationId);
 
@@ -71,30 +56,15 @@ export default function WeekendRotaPage() {
     [generationHistory]
   );
 
-  const weekendsForPeriod = React.useMemo(() => {
-    if (!selectedGeneration) return [];
-    const allWeekends = eachWeekendOfInterval({
-      start: parseISO(selectedGeneration.startDate),
-      end: parseISO(selectedGeneration.endDate),
-    });
-    return allWeekends.filter(day => isSaturday(day));
-  }, [selectedGeneration]);
-
   const rotaForPeriod = React.useMemo(() => {
     if (!selectedGeneration) return null;
-    const periodRotas = weekendRotas.filter(rota => {
-        const rotaDate = parseISO(rota.date);
-        return isWithinInterval(rotaDate, {
-            start: parseISO(selectedGeneration.startDate),
-            end: parseISO(selectedGeneration.endDate),
-        });
-    });
-    // Check if a rota has actually been generated for these weekends
-    if (periodRotas.length === weekendsForPeriod.length && weekendsForPeriod.length > 0) {
+    const periodRotas = weekendRotas.filter(rota => rota.generationId === selectedGeneration.id);
+    
+    if (periodRotas.length > 0) {
         return periodRotas.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     }
     return null;
-  }, [weekendRotas, selectedGeneration, weekendsForPeriod]);
+  }, [weekendRotas, selectedGeneration]);
 
 
   React.useEffect(() => {
@@ -110,7 +80,7 @@ export default function WeekendRotaPage() {
         <div>
           <CardTitle>Weekend Rota</CardTitle>
           <CardDescription>
-            Generate and view the sequential rota for weekend duties for a selected rota period.
+            View the sequential rota for weekend duties for a selected rota period.
           </CardDescription>
           <div className="pt-4">
               <Select value={selectedGenerationId || ""} onValueChange={setSelectedGenerationId}>
@@ -154,55 +124,20 @@ export default function WeekendRotaPage() {
               </Table>
             </div>
           ) : (
-            <div className="text-center text-muted-foreground py-12">
+            <div className="text-center text-muted-foreground py-12 flex flex-col items-center gap-4">
+              <CalendarDays className="h-10 w-10 text-muted-foreground" />
               <p>
                 No weekend rota generated for this period.
               </p>
-              <Button
-                className="mt-4"
-                onClick={() => generateWeekendRota(selectedGeneration.id)}
-                disabled={weekendsForPeriod.length === 0}
-              >
-                Generate Rota
-              </Button>
             </div>
           )
         ) : (
-             <div className="text-center text-muted-foreground py-12">
-                <p>Select a rota period to manage the weekend rota.</p>
+             <div className="text-center text-muted-foreground py-12 flex flex-col items-center gap-4">
+                <CalendarDays className="h-10 w-10 text-muted-foreground" />
+                <p>Select a rota period to view the weekend rota.</p>
             </div>
         )}
       </CardContent>
-      {selectedGeneration && rotaForPeriod && (
-        <CardFooter className="flex justify-end">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2" />
-                Delete Weekend Rota for this Period
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will delete the weekend rota for the selected period. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() =>
-                    deleteWeekendRotaForPeriod(selectedGeneration.id)
-                  }
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardFooter>
-      )}
     </Card>
   );
 }

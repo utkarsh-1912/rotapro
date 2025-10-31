@@ -74,6 +74,39 @@ const calculateShiftStreaks = (teamMembers: TeamMember[], generationHistory: Rot
     return streaks;
 };
 
+const generateWeekendRotaForGeneration = (
+    generation: RotaGeneration,
+    allTeamMembers: TeamMember[],
+    lastIndex: number
+): { newRotas: WeekendRota[], nextIndex: number } => {
+    const membersForGen = generation.teamMembersAtGeneration || allTeamMembers;
+    const flexibleMembers = membersForGen.filter(m => !m.fixedShiftId);
+    
+    if (flexibleMembers.length === 0) {
+        return { newRotas: [], nextIndex: lastIndex };
+    }
+
+    const interval = {
+        start: parseISO(generation.startDate),
+        end: parseISO(generation.endDate),
+    };
+
+    const saturdays = eachWeekendOfInterval(interval).filter(day => isSaturday(day));
+    
+    let assigneeIndex = lastIndex;
+
+    const newRotas: WeekendRota[] = saturdays.map(saturday => {
+        assigneeIndex = (assigneeIndex + 1) % flexibleMembers.length;
+        return {
+            date: formatISO(saturday),
+            memberId: flexibleMembers[assigneeIndex].id,
+            generationId: generation.id,
+        };
+    });
+
+    return { newRotas, nextIndex: assigneeIndex };
+};
+
 
 export const useRotaStore = create<AppState>()(
   persist(
@@ -202,7 +235,7 @@ export const useRotaStore = create<AppState>()(
 
       generateNewRota: (startDate: Date, rotaPeriodInWeeks: number = 2) => {
         set(state => {
-            const { teamMembers, shifts, generationHistory } = state;
+            const { teamMembers, shifts, generationHistory, lastWeekendAssigneeIndex } = state;
             const sortedShifts = [...shifts].sort((a,b) => a.sequence - b.sequence);
             
             const totalMinRequired = sortedShifts.reduce((acc, s) => acc + s.minTeam, 0);
@@ -245,12 +278,21 @@ export const useRotaStore = create<AppState>()(
                 manualSwaps: [],
                 comments: {},
             };
+            
+            // Auto-generate weekend rota for the new generation
+            const { newRotas: newWeekendRotas, nextIndex: newLastWeekendIndex } = generateWeekendRotaForGeneration(
+                newGeneration,
+                teamMembers,
+                lastWeekendAssigneeIndex
+            );
 
             const newHistory = [...generationHistory, newGeneration];
 
             return { 
                 generationHistory: newHistory,
-                activeGenerationId: newGeneration.id 
+                activeGenerationId: newGeneration.id,
+                weekendRotas: [...state.weekendRotas, ...newWeekendRotas],
+                lastWeekendAssigneeIndex: newLastWeekendIndex
             };
         });
       },
@@ -307,13 +349,22 @@ export const useRotaStore = create<AppState>()(
       deleteGeneration: (generationId: string) => {
         set(state => {
             const newHistory = state.generationHistory.filter(g => g.id !== generationId);
+            const newWeekendRotas = state.weekendRotas.filter(r => r.generationId !== generationId);
+            
             let newActiveId = state.activeGenerationId;
             if (state.activeGenerationId === generationId) {
                 newActiveId = newHistory.length > 0 ? [...newHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime())[0].id : null;
             }
+            
+            toast({
+                title: "Rota Deleted",
+                description: `The rota period and its associated weekend rota have been deleted.`,
+            });
+            
             return {
                 generationHistory: newHistory,
                 activeGenerationId: newActiveId,
+                weekendRotas: newWeekendRotas,
             }
         });
       },
@@ -322,52 +373,11 @@ export const useRotaStore = create<AppState>()(
           set({ activeGenerationId: generationId });
       },
 
-      generateWeekendRota: (generationId: string) => set(state => {
-        const { teamMembers, lastWeekendAssigneeIndex, weekendRotas, generationHistory } = state;
-        const targetGeneration = generationHistory.find(g => g.id === generationId);
+      generateWeekendRota: () => {
+        // This function is now intentionally blank.
+        // The logic is co-located with `generateNewRota`.
+      },
 
-        if (!targetGeneration) {
-            toast({ variant: "destructive", title: "Generation Failed", description: "Target rota period not found." });
-            return state;
-        }
-
-        const flexibleMembers = (targetGeneration.teamMembersAtGeneration || teamMembers).filter(m => !m.fixedShiftId);
-        if (flexibleMembers.length === 0) {
-            toast({ variant: "destructive", title: "Generation Failed", description: "No flexible team members available for weekend rota." });
-            return state;
-        }
-
-        const interval = {
-            start: parseISO(targetGeneration.startDate),
-            end: parseISO(targetGeneration.endDate),
-        };
-
-        const saturdays = eachWeekendOfInterval(interval).filter(day => isSaturday(day));
-        
-        let assigneeIndex = lastWeekendAssigneeIndex;
-
-        const newRotas: WeekendRota[] = saturdays.map(saturday => {
-            assigneeIndex = (assigneeIndex + 1) % flexibleMembers.length;
-            return {
-                date: formatISO(saturday),
-                memberId: flexibleMembers[assigneeIndex].id,
-                generationId: generationId,
-            };
-        });
-        
-        toast({
-            title: "Weekend Rota Generated",
-            description: `Generated for rota period ${format(interval.start, 'd MMM')} - ${format(interval.end, 'd MMM')}`
-        });
-
-        // Remove any old rotas for this same generation period before adding new ones
-        const otherRotas = weekendRotas.filter(r => r.generationId !== generationId);
-
-        return {
-            weekendRotas: [...otherRotas, ...newRotas],
-            lastWeekendAssigneeIndex: assigneeIndex
-        }
-      }),
       deleteWeekendRotaForPeriod: (generationId: string) => set(state => {
         const remainingRotas = state.weekendRotas.filter(rota => rota.generationId !== generationId);
 
