@@ -41,7 +41,7 @@ export default function SupportRotaPage() {
     setAdhocStatus(prev => ({
         ...prev,
         [memberId]: {
-            ...prev[memberId],
+            ...(prev[memberId] || {}),
             [weekIndex]: !prev[memberId]?.[weekIndex]
         }
     }));
@@ -93,20 +93,19 @@ export default function SupportRotaPage() {
     const filename = `support-rota-${format(startDate, "yyyy-MM-dd")}`;
 
     if (formatType === 'csv') {
-        const headers = ["Team Member", "Main Shift"];
+        const headers = ["Team Member", "Main Shift", "Ad-hoc Note"];
         weeks.forEach((week, index) => {
-          headers.push(`On Ad-hoc (Week ${index + 1})`, `Notes (Week ${index + 1})`);
+          headers.push(`On Ad-hoc (Week ${index + 1} - ${format(week.start, 'd MMM')})`);
         });
 
         const rows = teamMembersInRota.map(member => {
             const shiftId = activeGeneration.assignments[member.id];
             const shift = shiftId ? shiftMap.get(shiftId) : null;
-            const row = [member.name, shift ? shift.name : "Off"];
+            const row: (string | boolean)[] = [member.name, shift ? shift.name : "Off", adhocNotes[member.id] || ""];
 
             weeks.forEach((_, weekIndex) => {
                 const isOnAdhoc = !!adhocStatus[member.id]?.[weekIndex];
-                row.push(isOnAdhoc ? "Yes" : "No");
-                row.push(isOnAdhoc ? (adhocNotes[member.id] || "") : "");
+                row.push(isOnAdhoc);
             });
             return row;
         });
@@ -223,7 +222,7 @@ export default function SupportRotaPage() {
                     const shift = shiftId ? shiftMap.get(shiftId) : null;
                     return (
                       <TableRow key={member.id}>
-                        <TableCell className="font-medium sticky left-0 bg-card z-10">
+                        <TableCell className="font-medium sticky left-0 bg-card z-10 whitespace-nowrap">
                           <div>{member.name}</div>
                           {shift ? (
                             <Badge
@@ -278,4 +277,3 @@ export default function SupportRotaPage() {
     </motion.div>
   );
 }
-

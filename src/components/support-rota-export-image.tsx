@@ -5,7 +5,7 @@ import React from "react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { RotaGeneration, Shift, TeamMember } from "@/lib/types";
+import type { RotaGeneration, TeamMember } from "@/lib/types";
 import { useRotaStore } from "@/lib/store";
 
 type AdhocStatus = Record<string, Record<number, boolean>>;
@@ -31,47 +31,33 @@ export const SupportRotaExportImage = React.forwardRef<HTMLDivElement, SupportRo
                 <div className="border rounded-lg">
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead className="font-semibold text-black">Team Member</TableHead>
-                                <TableHead className="font-semibold text-black">Main Shift</TableHead>
-                                {weeks.map((week, index) => (
-                                    <TableHead key={index} className="font-semibold text-black text-center">
-                                        Week {index + 1} ({format(week.start, 'd MMM')})
-                                    </TableHead>
-                                ))}
-                                <TableHead className="font-semibold text-black">Adhoc Notes</TableHead>
+                             <TableRow>
+                                <TableHead className="font-semibold text-black border-r">Week</TableHead>
+                                {teamMembersInRota.map(member => {
+                                     const shiftId = activeGeneration.assignments[member.id];
+                                     const shift = shiftId ? shiftMap.get(shiftId) : null;
+                                     return (
+                                        <TableHead key={member.id} className="text-center font-semibold text-black">
+                                            {member.name}
+                                            {shift && <div className="font-normal text-xs">({shift.name})</div>}
+                                        </TableHead>
+                                     )
+                                })}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {teamMembersInRota.map(member => {
-                                const shiftId = activeGeneration.assignments[member.id];
-                                const shift = shiftId ? shiftMap.get(shiftId) : null;
-                                return (
-                                    <TableRow key={member.id}>
-                                        <TableCell className="font-medium text-black">{member.name}</TableCell>
-                                        <TableCell>
-                                            {shift ? (
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="bg-gray-200 text-black"
-                                                >
-                                                    {shift.name}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline">Off</Badge>
-                                            )}
-                                        </TableCell>
-                                        {weeks.map((_, index) => (
-                                            <TableCell key={index} className="text-center text-black">
-                                                {adhocStatus[member.id]?.[index] ? '✔️' : ''}
-                                            </TableCell>
-                                        ))}
-                                        <TableCell className="text-xs text-gray-700">
-                                            {adhocNotes[member.id] || ""}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
+                           {weeks.map((week, weekIndex) => (
+                               <TableRow key={weekIndex}>
+                                   <TableCell className="font-semibold text-black border-r whitespace-nowrap">
+                                        {format(week.start, 'd MMM')} - {format(week.end, 'd MMM')}
+                                   </TableCell>
+                                   {teamMembersInRota.map(member => (
+                                       <TableCell key={member.id} className="text-center text-xs text-gray-700 align-top">
+                                           {adhocStatus[member.id]?.[weekIndex] ? (adhocNotes[member.id] || "✔️") : ""}
+                                       </TableCell>
+                                   ))}
+                               </TableRow>
+                           ))}
                         </TableBody>
                     </Table>
                 </div>
@@ -82,4 +68,3 @@ export const SupportRotaExportImage = React.forwardRef<HTMLDivElement, SupportRo
 );
 
 SupportRotaExportImage.displayName = 'SupportRotaExportImage';
-
