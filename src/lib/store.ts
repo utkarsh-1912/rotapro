@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AppState, RotaGeneration, Shift, ShiftStreak, TeamMember, AdhocAssignments, WeekendRota } from "./types";
-import { startOfWeek, formatISO, parseISO, addDays, eachWeekendOfInterval, isWithinInterval, format } from "date-fns";
+import { startOfWeek, formatISO, parseISO, addDays, eachWeekendOfInterval, isWithinInterval, format, isSaturday } from "date-fns";
 import { generateNewRotaAssignments, balanceAssignments } from "./rotaGenerator";
 import { toast } from "@/hooks/use-toast";
 
@@ -325,13 +325,16 @@ export const useRotaStore = create<AppState>()(
             start: parseISO(targetGeneration.startDate),
             end: parseISO(targetGeneration.endDate),
         };
-        const weekends = eachWeekendOfInterval(interval);
+
+        const weekendsInInterval = eachWeekendOfInterval(interval);
+        const saturdays = weekendsInInterval.filter(day => isSaturday(day));
+        
         let assigneeIndex = lastWeekendAssigneeIndex;
 
-        const newRotas = weekends.map(weekendDay => {
+        const newRotas: WeekendRota[] = saturdays.map(saturday => {
             assigneeIndex = (assigneeIndex + 1) % flexibleMembers.length;
             return {
-                date: formatISO(weekendDay),
+                date: formatISO(saturday),
                 memberId: flexibleMembers[assigneeIndex].id,
                 generationId: generationId,
             };

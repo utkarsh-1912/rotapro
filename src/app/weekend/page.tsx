@@ -25,6 +25,8 @@ import {
   parseISO,
   eachWeekendOfInterval,
   isWithinInterval,
+  isSaturday,
+  addDays,
 } from "date-fns";
 import { Trash2 } from "lucide-react";
 import {
@@ -71,10 +73,11 @@ export default function WeekendRotaPage() {
 
   const weekendsForPeriod = React.useMemo(() => {
     if (!selectedGeneration) return [];
-    return eachWeekendOfInterval({
+    const allWeekends = eachWeekendOfInterval({
       start: parseISO(selectedGeneration.startDate),
       end: parseISO(selectedGeneration.endDate),
     });
+    return allWeekends.filter(day => isSaturday(day));
   }, [selectedGeneration]);
 
   const rotaForPeriod = React.useMemo(() => {
@@ -132,7 +135,7 @@ export default function WeekendRotaPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Weekend Date</TableHead>
+                    <TableHead>Weekend</TableHead>
                     <TableHead>Assigned Member</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -140,7 +143,7 @@ export default function WeekendRotaPage() {
                   {rotaForPeriod.map((rota) => (
                     <TableRow key={rota.date}>
                       <TableCell className="font-medium">
-                        {format(parseISO(rota.date), "EEE, d MMM yyyy")}
+                        {format(parseISO(rota.date), "d MMM")} - {format(addDays(parseISO(rota.date), 1), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>
                         {memberMap.get(rota.memberId)?.name || "Unknown Member"}
