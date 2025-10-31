@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO, startOfWeek, endOfWeek, addDays, isWithinInterval, isSaturday } from "date-fns";
 import { Badge } from "../ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationFirst, PaginationLast } from "../ui/pagination";
-import { Recycle, Download, ArrowRightLeft, LifeBuoy, CalendarDays } from "lucide-react";
+import { Recycle, Download, ArrowRightLeft, LifeBuoy, CalendarDays, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
@@ -72,7 +73,7 @@ function getWeeklyBreakdown(gen: RotaGeneration) {
 
 export function RotaMatrix() {
     const { generationHistory, shifts, weekendRotas, activeGenerationId } = useRotaStore();
-    const { swapShifts } = useRotaStoreActions();
+    const { swapShifts, toggleSwapNeutralization } = useRotaStoreActions();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
     const itemsPerPage = 5;
@@ -111,8 +112,14 @@ export function RotaMatrix() {
     
     const swapHistory = React.useMemo(() => 
         sortedHistory
-            .map(gen => ({ gen, details: getSwapDetails(gen, shiftMap, memberMap) }))
-            .filter(item => item.details !== null),
+            .map(gen => {
+                 if (!gen.manualSwaps || gen.manualSwaps.length === 0) return null;
+                 const swap = gen.manualSwaps[0];
+                 const details = getSwapDetails(gen, shiftMap, memberMap);
+                 if (!details) return null;
+                 return { gen, details, swap };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null),
         [sortedHistory, shiftMap, memberMap]
     );
 
@@ -565,7 +572,7 @@ export function RotaMatrix() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {swapHistory.map(({ gen, details }) => {
+                                    {swapHistory.map(({ gen, details, swap }) => {
                                         const startDate = parseISO(gen.startDate);
                                         const endDate = parseISO(gen.endDate);
                                         const member1Id = gen.manualSwaps![0].memberId1;
@@ -580,17 +587,20 @@ export function RotaMatrix() {
                                             return currentShiftM1 === details.m2TargetShift.id && currentShiftM2 === details.m1TargetShift.id;
                                         }, [activeGeneration, details]);
 
-                                        const handleCancelSwap = () => {
+                                        const handleSwapAction = () => {
                                             if (!activeGeneration || !details) return;
                                             swapShifts(details.memberId1, details.memberId2, activeGeneration.id);
+                                            toggleSwapNeutralization(gen.id, details.memberId1, details.memberId2);
+                                            
+                                            const actionText = swap.neutralized ? "reset" : "canceled out";
                                             toast({
-                                                title: "Swap Back Executed",
-                                                description: `Shifts for ${details.members} have been swapped back, cancelling out the manual change from ${format(startDate, 'd MMM yyyy')}.`,
+                                                title: `Swap ${actionText}`,
+                                                description: `The manual change between ${details.members} has been ${actionText}.`,
                                             });
                                         };
 
                                         return (
-                                            <TableRow key={gen.id}>
+                                            <TableRow key={gen.id} className={cn(swap.neutralized && "text-muted-foreground line-through")}>
                                                 <TableCell className="font-medium whitespace-nowrap">
                                                     {format(startDate, 'd MMM')} - {format(endDate, 'd MMM yyyy')}
                                                 </TableCell>
@@ -608,20 +618,24 @@ export function RotaMatrix() {
                                                         <TooltipTrigger asChild>
                                                             <div>
                                                                 <Button 
-                                                                    variant="outline"
-                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    size="icon"
                                                                     disabled={!canCancel}
-                                                                    onClick={handleCancelSwap}
+                                                                    onClick={handleSwapAction}
+                                                                    className={cn(swap.neutralized && "text-destructive hover:text-destructive")}
                                                                 >
-                                                                    Cancel Out
+                                                                    {swap.neutralized ? <Undo2 /> : <Recycle />}
+                                                                    <span className="sr-only">{swap.neutralized ? "Reset Swap" : "Cancel Out"}</span>
                                                                 </Button>
                                                             </div>
                                                         </TooltipTrigger>
-                                                        {!canCancel && 
-                                                            <TooltipContent>
+                                                        <TooltipContent>
+                                                            {canCancel ? (
+                                                                <p>{swap.neutralized ? "Reset this canceled swap" : "Cancel out this swap"}</p>
+                                                            ) : (
                                                                 <p>To cancel out, the active rota must have <br/> an opposing swap opportunity.</p>
-                                                            </TooltipContent>
-                                                        }
+                                                            )}
+                                                        </TooltipContent>
                                                     </Tooltip>
                                                 </TableCell>
                                             </TableRow>

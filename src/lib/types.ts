@@ -26,6 +26,7 @@ export type RotaAssignments = Record<string, string | undefined>;
 export type ManualSwap = {
     memberId1: string;
     memberId2: string;
+    neutralized?: boolean; // To track if a swap has been canceled out
 }
 
 // Adhoc status for a rota generation
@@ -70,6 +71,7 @@ export interface AppState {
   updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments, comments: Record<string, string>) => void;
   generateNewRota: (startDate: Date, rotaPeriodInWeeks: number) => void;
   swapShifts: (memberId1: string, memberId2: string, generationId?: string) => void;
+  toggleSwapNeutralization: (generationId: string, memberId1: string, memberId2: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;
   updateAssignment: (memberId: string, newShiftId: string) => void;

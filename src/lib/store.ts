@@ -277,7 +277,7 @@ export const useRotaStore = create<AppState>()(
                   newOverrides.add(memberId2);
 
                   const newSwaps = [...(gen.manualSwaps || [])];
-                  newSwaps.push({ memberId1, memberId2 });
+                  newSwaps.push({ memberId1, memberId2, neutralized: false });
                   
                   return {...gen, assignments: newAssignments, manualOverrides: Array.from(newOverrides), manualSwaps: newSwaps};
               }
@@ -288,6 +288,22 @@ export const useRotaStore = create<AppState>()(
         });
       },
       
+      toggleSwapNeutralization: (generationId, memberId1, memberId2) => set(state => ({
+        generationHistory: state.generationHistory.map(gen => {
+          if (gen.id === generationId) {
+            return {
+              ...gen,
+              manualSwaps: (gen.manualSwaps || []).map(swap => 
+                (swap.memberId1 === memberId1 && swap.memberId2 === memberId2) || (swap.memberId1 === memberId2 && swap.memberId2 === memberId1)
+                  ? { ...swap, neutralized: !swap.neutralized }
+                  : swap
+              )
+            }
+          }
+          return gen;
+        })
+      })),
+
       deleteGeneration: (generationId: string) => {
         set(state => {
             const newHistory = state.generationHistory.filter(g => g.id !== generationId);
@@ -326,8 +342,7 @@ export const useRotaStore = create<AppState>()(
             end: parseISO(targetGeneration.endDate),
         };
 
-        const weekendsInInterval = eachWeekendOfInterval(interval);
-        const saturdays = weekendsInInterval.filter(day => isSaturday(day));
+        const saturdays = eachWeekendOfInterval(interval).filter(day => isSaturday(day));
         
         let assigneeIndex = lastWeekendAssigneeIndex;
 
@@ -405,6 +420,7 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     deleteShift: state.deleteShift,
     generateNewRota: state.generateNewRota,
     swapShifts: state.swapShifts,
+    toggleSwapNeutralization: state.toggleSwapNeutralization,
     deleteGeneration: state.deleteGeneration,
     setActiveGenerationId: state.setActiveGenerationId,
     updateAssignmentsForGeneration: state.updateAssignmentsForGeneration,
