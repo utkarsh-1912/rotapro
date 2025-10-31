@@ -137,7 +137,7 @@ export function RotaMatrix() {
         const originalShiftForM1 = originalSwapGen.assignments[memberId2]; // Original shift for M1 was what M2 got
         const originalShiftForM2 = originalSwapGen.assignments[memberId1];
 
-        const futureGens = generationHistory.filter(g => parseISO(g.startDate) > parseISO(originalSwapGen.startDate));
+        const futureGens = generationHistory.filter(g => parseISO(g.startDate) >= parseISO(originalSwapGen.startDate));
 
         for (const futureGen of futureGens) {
             if (futureGen.assignments[memberId1] === originalShiftForM2 && futureGen.assignments[memberId2] === originalShiftForM1) {
