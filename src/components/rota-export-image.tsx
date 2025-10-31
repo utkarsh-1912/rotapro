@@ -30,8 +30,7 @@ export const RotaExportImage = React.forwardRef<HTMLDivElement, RotaExportImageP
                 {commentEntries.length > 0 && (
                     <div className="mt-4">
                         <Separator className="my-2 bg-gray-300"/>
-                        <h3 className="text-lg font-semibold mb-2">Comments</h3>
-                        <div className="space-y-1 text-sm">
+                        <div className="space-y-1 text-xs">
                             {commentEntries.map(([memberId, comment]) => (
                                 <p key={memberId}>
                                     <span className="font-semibold">{memberMap.get(memberId) || 'Unknown Member'}:</span> {comment}
