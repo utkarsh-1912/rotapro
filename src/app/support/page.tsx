@@ -8,15 +8,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
-import { differenceInCalendarWeeks, parseISO, startOfWeek, endOfWeek, addDays, format } from "date-fns";
-import { LifeBuoy } from "lucide-react";
+import { startOfWeek, endOfWeek, addDays, format, parseISO } from "date-fns";
+import { LifeBuoy, Download, FileText, Image as ImageIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { toPng } from 'html-to-image';
+import { downloadCsv } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { SupportRotaExportImage } from "@/components/support-rota-export-image";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+
 
 type AdhocStatus = Record<string, Record<number, boolean>>;
+type AdhocNotes = Record<string, string>;
 
 export default function SupportRotaPage() {
   const { generationHistory, activeGenerationId, shifts, teamMembers } = useRotaStore();
   const [adhocStatus, setAdhocStatus] = React.useState<AdhocStatus>({});
+  const [adhocNotes, setAdhocNotes] = React.useState<AdhocNotes>({});
+  const [isExportDialogOpen, setExportDialogOpen] = React.useState(false);
+  const { toast } = useToast();
+  const exportImageRef = React.useRef<HTMLDivElement>(null);
+
 
   const activeGeneration = React.useMemo(() =>
     generationHistory.find(g => g.id === activeGenerationId)
@@ -32,6 +45,10 @@ export default function SupportRotaPage() {
             [weekIndex]: !prev[memberId]?.[weekIndex]
         }
     }));
+  };
+
+  const handleNoteChange = (memberId: string, note: string) => {
+    setAdhocNotes(prev => ({ ...prev, [memberId]: note }));
   };
 
   if (!activeGeneration) {
@@ -69,6 +86,74 @@ export default function SupportRotaPage() {
 
   const teamMembersInRota = activeGeneration.teamMembersAtGeneration || [];
 
+  const handleExport = async (formatType: 'csv' | 'png') => {
+    if (!activeGeneration) return;
+
+    const startDate = parseISO(activeGeneration.startDate);
+    const filename = `support-rota-${format(startDate, "yyyy-MM-dd")}`;
+
+    if (formatType === 'csv') {
+        const headers = ["Team Member", "Main Shift"];
+        weeks.forEach((week, index) => {
+          headers.push(`On Ad-hoc (Week ${index + 1})`, `Notes (Week ${index + 1})`);
+        });
+
+        const rows = teamMembersInRota.map(member => {
+            const shiftId = activeGeneration.assignments[member.id];
+            const shift = shiftId ? shiftMap.get(shiftId) : null;
+            const row = [member.name, shift ? shift.name : "Off"];
+
+            weeks.forEach((_, weekIndex) => {
+                const isOnAdhoc = !!adhocStatus[member.id]?.[weekIndex];
+                row.push(isOnAdhoc ? "Yes" : "No");
+                row.push(isOnAdhoc ? (adhocNotes[member.id] || "") : "");
+            });
+            return row;
+        });
+        
+        downloadCsv([headers, ...rows], `${filename}.csv`);
+        toast({
+            title: "Export Successful",
+            description: "Your support rota has been downloaded as a CSV file.",
+        });
+    } else if (formatType === 'png') {
+        if (exportImageRef.current) {
+            try {
+                const fontCssResponse = await fetch(
+                    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+                );
+                const fontCss = await fontCssResponse.text();
+
+                const dataUrl = await toPng(exportImageRef.current, { 
+                    cacheBust: true, 
+                    pixelRatio: 2,
+                    fontEmbedCSS: fontCss,
+                    backgroundColor: 'white',
+                });
+                
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = dataUrl;
+                link.click();
+                toast({
+                    title: "Export Successful",
+                    description: "Your support rota has been downloaded as a PNG image.",
+                });
+            } catch (err) {
+                console.error(err);
+                toast({
+                    variant: "destructive",
+                    title: "Export Failed",
+                    description: "Could not generate image.",
+                });
+            }
+        }
+    }
+
+    setExportDialogOpen(false);
+  };
+
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -77,11 +162,44 @@ export default function SupportRotaPage() {
       className="p-4 sm:p-6"
     >
       <Card>
-        <CardHeader>
-          <CardTitle>Ad-hoc Support Planning</CardTitle>
-          <CardDescription>
-            Assign team members to ad-hoc support duty for each week of the active rota period.
-          </CardDescription>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <CardTitle>Ad-hoc Support Planning</CardTitle>
+            <CardDescription>
+              Assign team members to ad-hoc support duty for each week of the active rota period.
+            </CardDescription>
+          </div>
+           <Dialog open={isExportDialogOpen} onOpenChange={setExportDialogOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" disabled={!activeGeneration}><Download /> Export</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Support Rota</DialogTitle>
+                <DialogDescription>Choose the format to export your ad-hoc support rota.</DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-center gap-4 py-4">
+                <Button variant="outline" onClick={() => handleExport('csv')} className="flex-1">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as CSV
+                </Button>
+                <Button variant="outline" onClick={() => handleExport('png')} className="flex-1">
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Export as Image
+                </Button>
+              </div>
+                <div className="absolute -left-[9999px] top-0">
+                    <SupportRotaExportImage 
+                        ref={exportImageRef} 
+                        activeGeneration={activeGeneration}
+                        teamMembersInRota={teamMembersInRota}
+                        weeks={weeks}
+                        adhocStatus={adhocStatus}
+                        adhocNotes={adhocNotes}
+                    />
+                </div>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -133,7 +251,13 @@ export default function SupportRotaPage() {
                         ))}
                         
                         <TableCell>
-                           <Textarea placeholder="Log any adhoc queries here..." className="text-xs" rows={1} />
+                           <Textarea 
+                             placeholder="Log any adhoc queries here..." 
+                             className="text-xs" 
+                             rows={1}
+                             value={adhocNotes[member.id] || ""}
+                             onChange={(e) => handleNoteChange(member.id, e.target.value)}
+                           />
                         </TableCell>
                       </TableRow>
                     );
@@ -154,3 +278,4 @@ export default function SupportRotaPage() {
     </motion.div>
   );
 }
+
