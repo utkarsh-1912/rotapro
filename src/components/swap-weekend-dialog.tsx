@@ -60,7 +60,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
     },
   });
 
-  const swappableMembers = React.useMemo(() => {
+  const membersWithDuty = React.useMemo(() => {
     const memberIdsWithWeekendDuty = new Set(
         weekendRotas
             .filter(r => r.generationId === generationId)
@@ -68,6 +68,11 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
     );
     return teamMembers.filter(m => memberIdsWithWeekendDuty.has(m.id));
   }, [weekendRotas, teamMembers, generationId]);
+
+  const allFlexibleMembers = React.useMemo(() => 
+    teamMembers.filter(m => !m.fixedShiftId),
+    [teamMembers]
+  );
 
   function onSubmit(values: z.infer<typeof swapWeekendSchema>) {
     swapWeekendAssignments(generationId, values.memberId1, values.memberId2);
@@ -94,7 +99,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
         <DialogHeader>
           <DialogTitle>Swap Weekend Duties</DialogTitle>
           <DialogDescription>
-            Select two members to swap all of their assigned weekend duties within this rota period.
+            Select a member currently on duty and another member to swap all their weekend assignments with for this period.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -104,7 +109,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
               name="memberId1"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First Member</FormLabel>
+                  <FormLabel>Member Currently on Duty</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
@@ -112,7 +117,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {swappableMembers.map((member) => (
+                      {membersWithDuty.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}
                         </SelectItem>
@@ -128,7 +133,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
               name="memberId2"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Second Member</FormLabel>
+                  <FormLabel>Swap With</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
@@ -136,7 +141,7 @@ export function SwapWeekendDialog({ open, onOpenChange, generationId }: SwapWeek
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {swappableMembers.map((member) => (
+                      {allFlexibleMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}
                         </SelectItem>
