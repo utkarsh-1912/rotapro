@@ -7,22 +7,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { differenceInCalendarWeeks, parseISO } from "date-fns";
+import { differenceInCalendarWeeks, parseISO, startOfWeek, endOfWeek, addDays, format } from "date-fns";
 import { LifeBuoy } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
+type AdhocStatus = Record<string, Record<number, boolean>>;
+
 export default function SupportRotaPage() {
   const { generationHistory, activeGenerationId, shifts, teamMembers } = useRotaStore();
-  const [selectedWeek, setSelectedWeek] = React.useState(1);
+  const [adhocStatus, setAdhocStatus] = React.useState<AdhocStatus>({});
 
   const activeGeneration = React.useMemo(() =>
     generationHistory.find(g => g.id === activeGenerationId)
   , [generationHistory, activeGenerationId]);
 
   const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
-  const memberMap = React.useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
+  
+  const handleAdhocChange = (memberId: string, weekIndex: number) => {
+    setAdhocStatus(prev => ({
+        ...prev,
+        [memberId]: {
+            ...prev[memberId],
+            [weekIndex]: !prev[memberId]?.[weekIndex]
+        }
+    }));
+  };
 
   if (!activeGeneration) {
     return (
@@ -42,9 +52,20 @@ export default function SupportRotaPage() {
     );
   }
 
-  const startDate = parseISO(activeGeneration.startDate);
-  const endDate = parseISO(activeGeneration.endDate);
-  const totalWeeks = differenceInCalendarWeeks(endDate, startDate, { weekStartsOn: 1 }) + 1;
+  const rotaStartDate = parseISO(activeGeneration.startDate);
+  const rotaEndDate = parseISO(activeGeneration.endDate);
+  
+  const weeks = [];
+  let currentWeekStart = startOfWeek(rotaStartDate, { weekStartsOn: 1 });
+
+  while(currentWeekStart <= rotaEndDate) {
+    const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    weeks.push({
+        start: currentWeekStart,
+        end: currentWeekEnd > rotaEndDate ? rotaEndDate : currentWeekEnd
+    });
+    currentWeekStart = addDays(currentWeekStart, 7);
+  }
 
   const teamMembersInRota = activeGeneration.teamMembersAtGeneration || [];
 
@@ -57,35 +78,24 @@ export default function SupportRotaPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Support Rota</CardTitle>
+          <CardTitle>Ad-hoc Support Planning</CardTitle>
           <CardDescription>
-            Weekly shift assignments for handling ad-hoc support queries.
+            Assign team members to ad-hoc support duty for each week of the active rota period.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {totalWeeks > 1 && (
-              <div className="flex items-center space-x-4 rounded-md border p-4">
-                <Label className="font-semibold">Select Week:</Label>
-                {[...Array(totalWeeks)].map((_, i) => (
-                  <div key={i + 1} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`week-${i + 1}`}
-                      checked={selectedWeek === i + 1}
-                      onCheckedChange={() => setSelectedWeek(i + 1)}
-                    />
-                    <Label htmlFor={`week-${i + 1}`}>Week {i + 1}</Label>
-                  </div>
-                ))}
-              </div>
-            )}
-            
             <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Team Member</TableHead>
-                    <TableHead>Assigned Shift (Week {selectedWeek})</TableHead>
+                    <TableHead className="sticky left-0 bg-card z-10">Team Member</TableHead>
+                    {weeks.map((week, index) => (
+                      <TableHead key={index} className="text-center">
+                        <div>On Ad-hoc</div>
+                        <div className="font-normal text-muted-foreground whitespace-nowrap">{format(week.start, 'd MMM')} - {format(week.end, 'd MMM')}</div>
+                      </TableHead>
+                    ))}
                     <TableHead>Adhoc Queries / Notes</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -95,22 +105,33 @@ export default function SupportRotaPage() {
                     const shift = shiftId ? shiftMap.get(shiftId) : null;
                     return (
                       <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.name}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-medium sticky left-0 bg-card z-10">
+                          <div>{member.name}</div>
                           {shift ? (
                             <Badge
                               variant="secondary"
+                              className="font-normal mt-1"
                               style={{ 
                                 backgroundColor: shift.color,
                                 color: 'hsl(var(--card-foreground))' 
                               }}
                             >
-                              {shift.name} ({shift.startTime} - {shift.endTime})
+                              {shift.name}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground">Off</span>
+                             <Badge variant="outline" className="font-normal mt-1">Off</Badge>
                           )}
                         </TableCell>
+
+                        {weeks.map((_, index) => (
+                           <TableCell key={index} className="text-center">
+                             <Checkbox
+                               checked={!!adhocStatus[member.id]?.[index]}
+                               onCheckedChange={() => handleAdhocChange(member.id, index)}
+                             />
+                           </TableCell>
+                        ))}
+                        
                         <TableCell>
                            <Textarea placeholder="Log any adhoc queries here..." className="text-xs" rows={1} />
                         </TableCell>
@@ -119,7 +140,7 @@ export default function SupportRotaPage() {
                   })}
                   {teamMembersInRota.length === 0 && (
                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground h-24">
+                        <TableCell colSpan={weeks.length + 2} className="text-center text-muted-foreground h-24">
                            No team members were part of this rota generation.
                         </TableCell>
                     </TableRow>
