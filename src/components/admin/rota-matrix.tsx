@@ -42,7 +42,11 @@ function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, Shift>, membe
 
     return {
         members: `${member1.name} & ${member2.name}`,
-        netEffect
+        memberId1: member1.id,
+        memberId2: member2.id,
+        netEffect,
+        m1TargetShift: member1OriginalShift,
+        m2TargetShift: member2OriginalShift,
     };
 }
 
@@ -67,7 +71,7 @@ function getWeeklyBreakdown(gen: RotaGeneration) {
 
 
 export function RotaMatrix() {
-    const { generationHistory, shifts, weekendRotas } = useRotaStore();
+    const { generationHistory, shifts, weekendRotas, activeGenerationId } = useRotaStore();
     const { swapShifts } = useRotaStoreActions();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
@@ -100,6 +104,10 @@ export function RotaMatrix() {
 
     const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
     const memberMap = React.useMemo(() => new Map(allHistoricalMembers.map(m => [m.id, m])), [allHistoricalMembers]);
+    
+    const activeGeneration = React.useMemo(() => 
+        generationHistory.find(g => g.id === activeGenerationId)
+    , [generationHistory, activeGenerationId]);
     
     const swapHistory = React.useMemo(() => 
         sortedHistory
@@ -553,6 +561,7 @@ export function RotaMatrix() {
                                         <TableHead>Members Involved</TableHead>
                                         <TableHead>Shifts Swapped</TableHead>
                                         <TableHead>Net Effect</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -563,6 +572,23 @@ export function RotaMatrix() {
                                         const member2Id = gen.manualSwaps![0].memberId2;
                                         const shift1 = shiftMap.get(gen.assignments[member2Id])?.name || 'N/A';
                                         const shift2 = shiftMap.get(gen.assignments[member1Id])?.name || 'N/A';
+
+                                        const canCancel = React.useMemo(() => {
+                                            if (!activeGeneration || !details) return false;
+                                            const currentShiftM1 = activeGeneration.assignments[details.memberId1];
+                                            const currentShiftM2 = activeGeneration.assignments[details.memberId2];
+                                            return currentShiftM1 === details.m2TargetShift.id && currentShiftM2 === details.m1TargetShift.id;
+                                        }, [activeGeneration, details]);
+
+                                        const handleCancelSwap = () => {
+                                            if (!activeGeneration || !details) return;
+                                            swapShifts(details.memberId1, details.memberId2, activeGeneration.id);
+                                            toast({
+                                                title: "Swap Back Executed",
+                                                description: `Shifts for ${details.members} have been swapped back, cancelling out the manual change from ${format(startDate, 'd MMM yyyy')}.`,
+                                            });
+                                        };
+
                                         return (
                                             <TableRow key={gen.id}>
                                                 <TableCell className="font-medium whitespace-nowrap">
@@ -577,6 +603,27 @@ export function RotaMatrix() {
                                                         </Badge>
                                                     )}
                                                 </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div>
+                                                                <Button 
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={!canCancel}
+                                                                    onClick={handleCancelSwap}
+                                                                >
+                                                                    Cancel Out
+                                                                </Button>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        {!canCancel && 
+                                                            <TooltipContent>
+                                                                <p>To cancel out, the active rota must have <br/> an opposing swap opportunity.</p>
+                                                            </TooltipContent>
+                                                        }
+                                                    </Tooltip>
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -589,5 +636,7 @@ export function RotaMatrix() {
         </TooltipProvider>
     )
 }
+
+    
 
     
