@@ -61,7 +61,7 @@ export function RotaMatrix() {
     }, [generationHistory]);
     
     const sortedHistory = React.useMemo(() =>
-        [...generationHistory].sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()),
+        [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()),
         [generationHistory]
     );
 
@@ -306,5 +306,7 @@ export function RotaMatrix() {
         </TooltipProvider>
     )
 }
+
+    
 
     
