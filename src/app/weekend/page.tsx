@@ -33,13 +33,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays } from "lucide-react";
+import { ArrowRightLeft, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SwapWeekendDialog } from "@/components/swap-weekend-dialog";
 
 export default function WeekendRotaPage() {
   const { weekendRotas, teamMembers, generationHistory, activeGenerationId } =
     useRotaStore();
   const [selectedGenerationId, setSelectedGenerationId] =
     React.useState<string | null>(activeGenerationId);
+  const [isSwapDialogOpen, setSwapDialogOpen] = React.useState(false);
 
   const selectedGeneration = React.useMemo(
     () => generationHistory.find((g) => g.id === selectedGenerationId),
@@ -75,6 +78,7 @@ export default function WeekendRotaPage() {
   }, [activeGenerationId, selectedGenerationId]);
 
   return (
+    <>
     <Card className="m-4 sm:m-6">
       <CardHeader className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div>
@@ -97,6 +101,10 @@ export default function WeekendRotaPage() {
               </Select>
             </div>
         </div>
+        <Button variant="outline" onClick={() => setSwapDialogOpen(true)} disabled={!rotaForPeriod}>
+          <ArrowRightLeft className="mr-2 h-4 w-4" />
+          Swap Weekend
+        </Button>
       </CardHeader>
       <CardContent>
         {selectedGeneration ? (
@@ -139,5 +147,13 @@ export default function WeekendRotaPage() {
         )}
       </CardContent>
     </Card>
+    {selectedGeneration && (
+        <SwapWeekendDialog
+            open={isSwapDialogOpen}
+            onOpenChange={setSwapDialogOpen}
+            generationId={selectedGeneration.id}
+        />
+    )}
+    </>
   );
 }

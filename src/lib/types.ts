@@ -78,6 +78,7 @@ export interface AppState {
   updateAdhocAssignments: (generationId: string, adhocAssignments: AdhocAssignments, notes: Record<string, string>) => void;
   generateWeekendRota: (generationId: string) => void;
   deleteWeekendRotaForPeriod: (generationId: string) => void;
+  swapWeekendAssignments: (generationId: string, memberId1: string, memberId2: string) => void;
 }
 
 export type UserProfile = {

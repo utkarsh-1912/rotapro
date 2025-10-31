@@ -388,6 +388,28 @@ export const useRotaStore = create<AppState>()(
 
         return { weekendRotas: remainingRotas };
       }),
+      
+      swapWeekendAssignments: (generationId: string, memberId1: string, memberId2: string) => set((state) => {
+        const assignmentsForGen = state.weekendRotas.filter(r => r.generationId === generationId);
+        const otherAssignments = state.weekendRotas.filter(r => r.generationId !== generationId);
+
+        const member1Dates = assignmentsForGen.filter(r => r.memberId === memberId1).map(r => r.date);
+        const member2Dates = assignmentsForGen.filter(r => r.memberId === memberId2).map(r => r.date);
+        
+        const updatedAssignments = assignmentsForGen.map(assignment => {
+            if (member1Dates.includes(assignment.date)) {
+                return { ...assignment, memberId: memberId2 };
+            }
+            if (member2Dates.includes(assignment.date)) {
+                return { ...assignment, memberId: memberId1 };
+            }
+            return assignment;
+        });
+
+        return {
+            weekendRotas: [...otherAssignments, ...updatedAssignments]
+        };
+      }),
 
     }),
     {
@@ -438,4 +460,5 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     updateAdhocAssignments: state.updateAdhocAssignments,
     generateWeekendRota: state.generateWeekendRota,
     deleteWeekendRotaForPeriod: state.deleteWeekendRotaForPeriod,
+    swapWeekendAssignments: state.swapWeekendAssignments,
 }));
