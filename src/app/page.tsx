@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -13,12 +14,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import placeholderImages from "@/lib/placeholder-images.json";
+import { useUser } from "@/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function LandingPage() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, isUserLoading, router]);
 
   const featureVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -61,6 +72,14 @@ export default function LandingPage() {
     )}`;
     window.location.href = mailtoLink;
   };
+
+  if (isUserLoading || user) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Skeleton className="h-[400px] w-full max-w-4xl" />
+        </div>
+    );
+  }
 
 
   return (
