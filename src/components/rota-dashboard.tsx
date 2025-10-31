@@ -16,6 +16,7 @@ import { RotaGenerationDialog } from "./admin/rota-manager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "./ui/dialog";
 import { toPng } from 'html-to-image';
 import { RotaExportImage } from "./rota-export-image";
+import { SwapCancellationBanner } from "./swap-cancellation-banner";
 
 export function RotaDashboard() {
   const { generationHistory, activeGenerationId, teamMembers, shifts } = useRotaStore();
@@ -68,7 +69,7 @@ export function RotaDashboard() {
                 );
                 const fontCss = await fontCssResponse.text();
 
-                const dataUrl = await toPng(exportImageRef.current, { 
+                const dataUrl = await toPng(exportImage.current, { 
                     cacheBust: true, 
                     pixelRatio: 2,
                     fontEmbedCSS: fontCss,
@@ -163,7 +164,10 @@ export function RotaDashboard() {
           </div>
        </CardHeader>
       <CardContent>
-        <RotaTable ref={rotaTableRef} />
+        <div className="space-y-4">
+          <RotaTable ref={rotaTableRef} />
+          <SwapCancellationBanner />
+        </div>
         <SwapShiftsDialog open={isSwapDialogOpen} onOpenChange={setSwapDialogOpen} />
       </CardContent>
     </Card>
