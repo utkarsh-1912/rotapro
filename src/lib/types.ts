@@ -55,7 +55,7 @@ export interface AppState {
   deleteShift: (id: string) => void;
   updateAssignmentsForGeneration: (generationId: string, assignments: RotaAssignments, comments: Record<string, string>) => void;
   generateNewRota: (startDate: Date, rotaPeriodInWeeks: number) => void;
-  swapShifts: (memberId1: string, memberId2: string) => void;
+  swapShifts: (memberId1: string, memberId2: string, generationId?: string) => void;
   deleteGeneration: (generationId: string) => void;
   setActiveGenerationId: (generationId: string | null) => void;
   updateAssignment: (memberId: string, newShiftId: string) => void;

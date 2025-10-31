@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { useRotaStore } from "@/lib/store";
+import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
@@ -13,10 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 import { Button } from "../ui/button";
 import { downloadCsv } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { RotaGeneration, TeamMember } from "@/lib/types";
-import { Separator } from "../ui/separator";
+import type { RotaGeneration, Shift, TeamMember } from "@/lib/types";
 
-function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, any>, memberMap: Map<string, any>) {
+function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, Shift>, memberMap: Map<string, TeamMember>) {
     if (!gen.manualSwaps || gen.manualSwaps.length === 0) {
         return null;
     }
@@ -27,21 +26,30 @@ function getSwapDetails(gen: RotaGeneration, shiftMap: Map<string, any>, memberM
     const member2 = memberMap.get(swap.memberId2);
     if (!member1 || !member2) return null;
 
-    // The shift recorded in assignments is their NEW shift
-    const shift1 = shiftMap.get(gen.assignments[swap.memberId1]);
-    const shift2 = shiftMap.get(gen.assignments[swap.memberId2]);
+    // The shift recorded in assignments is their NEW shift, so the original shifts are swapped
+    const member1OriginalShift = shiftMap.get(gen.assignments[swap.memberId2]);
+    const member2OriginalShift = shiftMap.get(gen.assignments[swap.memberId1]);
 
-    if (!shift1 || !shift2) return null;
+    if (!member1OriginalShift || !member2OriginalShift) return null;
+
+    const sequenceDiff = member2OriginalShift.sequence - member1OriginalShift.sequence;
+    let netEffect: "neutral" | number = "neutral";
+    if (sequenceDiff !== 0) {
+        netEffect = sequenceDiff > 0 ? 1 : -1;
+    }
+
 
     return {
         members: `${member1.name} & ${member2.name}`,
-        shifts: `${shift2.name} ↔ ${shift1.name}`, // Show original shifts
+        shifts: `${member1OriginalShift.name} ↔ ${member2OriginalShift.name}`, // Show original shifts
+        netEffect
     };
 }
 
 
 export function RotaMatrix() {
     const { generationHistory, shifts } = useRotaStore();
+    const { swapShifts } = useRotaStoreActions();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
     const itemsPerPage = 5;
@@ -121,6 +129,34 @@ export function RotaMatrix() {
             description: "The complete rota matrix history has been downloaded as a CSV file.",
         });
     };
+
+    const findAndHandleSwapBack = (swapGenId: string, memberId1: string, memberId2: string) => {
+        const originalSwapGen = generationHistory.find(g => g.id === swapGenId);
+        if (!originalSwapGen) return;
+
+        const originalShiftForM1 = originalSwapGen.assignments[memberId2]; // Original shift for M1 was what M2 got
+        const originalShiftForM2 = originalSwapGen.assignments[memberId1];
+
+        const futureGens = generationHistory.filter(g => parseISO(g.startDate) > parseISO(originalSwapGen.startDate));
+
+        for (const futureGen of futureGens) {
+            if (futureGen.assignments[memberId1] === originalShiftForM2 && futureGen.assignments[memberId2] === originalShiftForM1) {
+                // Found a swap back opportunity
+                swapShifts(memberId1, memberId2, futureGen.id);
+                 toast({
+                    title: "Swap Back Executed",
+                    description: `Shifts for rota period starting ${format(parseISO(futureGen.startDate), 'd MMM yyyy')} have been swapped back.`,
+                });
+                return;
+            }
+        }
+
+        toast({
+            variant: "destructive",
+            title: "No Swap Back Found",
+            description: "No future rota was found where a direct swap-back was possible.",
+        });
+    }
     
     return (
         <TooltipProvider>
@@ -281,12 +317,16 @@ export function RotaMatrix() {
                                         <TableHead>Rota Period</TableHead>
                                         <TableHead>Members Involved</TableHead>
                                         <TableHead>Shifts Swapped</TableHead>
+                                        <TableHead>Net Effect</TableHead>
+                                        <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {swapHistory.map(({ gen, details }) => {
                                         const startDate = parseISO(gen.startDate);
                                         const endDate = parseISO(gen.endDate);
+                                        const member1Id = gen.manualSwaps![0].memberId1;
+                                        const member2Id = gen.manualSwaps![0].memberId2;
                                         return (
                                             <TableRow key={gen.id}>
                                                 <TableCell className="font-medium whitespace-nowrap">
@@ -294,6 +334,30 @@ export function RotaMatrix() {
                                                 </TableCell>
                                                 <TableCell>{details?.members}</TableCell>
                                                 <TableCell>{details?.shifts}</TableCell>
+                                                <TableCell>
+                                                    {details?.netEffect !== 'neutral' && (
+                                                        <Badge variant={details?.netEffect === 1 ? "default" : "destructive"}>
+                                                            {details?.netEffect === 1 ? '+1' : '-1'}
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => findAndHandleSwapBack(gen.id, member1Id, member2Id)}
+                                                            >
+                                                                <Recycle className="h-4 w-4 mr-2" />
+                                                                Cancel Out
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Find a future rota where these members can be swapped back to cancel the net effect.</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -306,7 +370,3 @@ export function RotaMatrix() {
         </TooltipProvider>
     )
 }
-
-    
-
-    
