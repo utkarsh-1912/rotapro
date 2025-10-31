@@ -69,7 +69,7 @@ export function RotaDashboard() {
                 );
                 const fontCss = await fontCssResponse.text();
 
-                const dataUrl = await toPng(exportImage.current, { 
+                const dataUrl = await toPng(exportImageRef.current, { 
                     cacheBust: true, 
                     pixelRatio: 2,
                     fontEmbedCSS: fontCss,
