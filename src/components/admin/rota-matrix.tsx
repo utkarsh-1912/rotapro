@@ -180,6 +180,72 @@ export function RotaMatrix() {
         });
     };
 
+    const handleSupportExport = () => {
+        if (generationHistory.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Export Failed",
+                description: "There is no ad-hoc support history to export.",
+            });
+            return;
+        }
+
+        const allWeeksHeaders: {label: string, genId: string, weekIndex: number}[] = [];
+         sortedHistory.forEach((gen) => {
+            const weeks = getWeeklyBreakdown(gen);
+            weeks.forEach((week) => {
+                allWeeksHeaders.push({
+                    label: `${format(week.start, 'd MMM')} - ${format(week.end, 'd MMM yyyy')}`,
+                    genId: gen.id,
+                    weekIndex: week.weekIndex
+                });
+            });
+        });
+
+
+        const header = ["Member", ...allWeeksHeaders.map(h => h.label)];
+        const noteHeader = ["Member", ...allWeeksHeaders.map(h => `${h.label} (Note)`)];
+        
+        const dutyRows: (string | boolean)[][] = [];
+        const noteRows: string[][] = [];
+
+        allHistoricalMembers.forEach(member => {
+            const dutyRow = [member.name];
+            const noteRow = [member.name];
+            
+            allWeeksHeaders.forEach(headerInfo => {
+                const gen = sortedHistory.find(g => g.id === headerInfo.genId);
+                const isOnAdhoc = gen?.adhoc?.[member.id]?.[headerInfo.weekIndex] ?? false;
+                const note = gen?.comments?.[member.id] ?? "";
+                
+                dutyRow.push(isOnAdhoc ? "On Duty" : "");
+                noteRow.push(isOnAdhoc ? note : "");
+            });
+            
+            dutyRows.push(dutyRow);
+            noteRows.push(noteRow);
+        });
+
+        const combinedHeader = ["Member", ...allWeeksHeaders.map(h => [h.label, `${h.label} (Note)`]).flat()];
+        const combinedRows = allHistoricalMembers.map(member => {
+            const rowData = [member.name];
+             allWeeksHeaders.forEach(headerInfo => {
+                 const gen = sortedHistory.find(g => g.id === headerInfo.genId);
+                 const isOnAdhoc = gen?.adhoc?.[member.id]?.[headerInfo.weekIndex] ?? false;
+                 const note = gen?.comments?.[member.id] ?? "";
+                 rowData.push(isOnAdhoc ? "On Duty" : "");
+                 rowData.push(note);
+             });
+            return rowData;
+        });
+
+        downloadCsv([combinedHeader, ...combinedRows], "adhoc-support-history.csv");
+        toast({
+            title: "Export Successful",
+            description: "The ad-hoc support history has been downloaded as a CSV file.",
+        });
+    };
+
     const handleWeekendExport = () => {
         if (weekendRotas.length === 0) {
             toast({
@@ -349,11 +415,16 @@ export function RotaMatrix() {
             </Card>
 
             <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><LifeBuoy /> Ad-hoc Support Matrix</CardTitle>
-                    <CardDescription>
-                        Historical view of weekly ad-hoc support assignments and notes.
-                    </CardDescription>
+                 <CardHeader className="flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2"><LifeBuoy /> Ad-hoc Support Matrix</CardTitle>
+                        <CardDescription>
+                            Historical view of weekly ad-hoc support assignments and notes.
+                        </CardDescription>
+                    </div>
+                     <Button variant="outline" onClick={handleSupportExport} disabled={generationHistory.length === 0}>
+                        <Download /> Export as CSV
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto rounded-lg border">
