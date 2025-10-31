@@ -17,23 +17,36 @@ import { downloadCsv } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { SupportRotaExportImage } from "@/components/support-rota-export-image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 type AdhocStatus = Record<string, Record<number, boolean>>;
 type AdhocNotes = Record<string, string>;
 
 export default function SupportRotaPage() {
-  const { generationHistory, activeGenerationId, shifts, teamMembers } = useRotaStore();
+  const { generationHistory, activeGenerationId, shifts } = useRotaStore();
+  const [selectedGenerationId, setSelectedGenerationId] = React.useState<string | null>(activeGenerationId);
   const [adhocStatus, setAdhocStatus] = React.useState<AdhocStatus>({});
   const [adhocNotes, setAdhocNotes] = React.useState<AdhocNotes>({});
   const [isExportDialogOpen, setExportDialogOpen] = React.useState(false);
   const { toast } = useToast();
   const exportImageRef = React.useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    // When the active rota changes elsewhere, update the selection here if it was the one selected
+    if (activeGenerationId) {
+        setSelectedGenerationId(activeGenerationId);
+    }
+  }, [activeGenerationId]);
 
-  const activeGeneration = React.useMemo(() =>
-    generationHistory.find(g => g.id === activeGenerationId)
-  , [generationHistory, activeGenerationId]);
+  const sortedHistory = React.useMemo(() => 
+    [...generationHistory].sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()),
+    [generationHistory]
+  );
+
+  const selectedGeneration = React.useMemo(() =>
+    sortedHistory.find(g => g.id === selectedGenerationId)
+  , [sortedHistory, selectedGenerationId]);
 
   const shiftMap = React.useMemo(() => new Map(shifts.map(s => [s.id, s])), [shifts]);
   
@@ -51,7 +64,7 @@ export default function SupportRotaPage() {
     setAdhocNotes(prev => ({ ...prev, [memberId]: note }));
   };
 
-  if (!activeGeneration) {
+  if (!selectedGeneration) {
     return (
       <div className="flex items-center justify-center h-full p-4">
         <Card className="w-full max-w-lg text-center">
@@ -59,18 +72,36 @@ export default function SupportRotaPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
               <LifeBuoy className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>No Active Rota</CardTitle>
+            <CardTitle>No Rota Selected</CardTitle>
             <CardDescription>
-              A main rota must be generated and active before a support rota can be displayed.
+              {generationHistory.length > 0 
+                ? "Select a rota period from the dropdown to begin planning." 
+                : "A main rota must be generated before a support rota can be planned."}
             </CardDescription>
+             {generationHistory.length > 0 && (
+                <div className="pt-4">
+                    <Select onValueChange={setSelectedGenerationId}>
+                        <SelectTrigger className="w-[280px] mx-auto">
+                            <SelectValue placeholder="Select a rota period..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {sortedHistory.map(gen => (
+                                <SelectItem key={gen.id} value={gen.id}>
+                                    {format(parseISO(gen.startDate), 'd MMM')} - {format(parseISO(gen.endDate), 'd MMM yyyy')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+             )}
           </CardHeader>
         </Card>
       </div>
     );
   }
 
-  const rotaStartDate = parseISO(activeGeneration.startDate);
-  const rotaEndDate = parseISO(activeGeneration.endDate);
+  const rotaStartDate = parseISO(selectedGeneration.startDate);
+  const rotaEndDate = parseISO(selectedGeneration.endDate);
   
   const weeks = [];
   let currentWeekStart = startOfWeek(rotaStartDate, { weekStartsOn: 1 });
@@ -84,12 +115,12 @@ export default function SupportRotaPage() {
     currentWeekStart = addDays(currentWeekStart, 7);
   }
 
-  const teamMembersInRota = activeGeneration.teamMembersAtGeneration || [];
+  const teamMembersInRota = selectedGeneration.teamMembersAtGeneration || [];
 
   const handleExport = async (formatType: 'csv' | 'png') => {
-    if (!activeGeneration) return;
+    if (!selectedGeneration) return;
 
-    const startDate = parseISO(activeGeneration.startDate);
+    const startDate = parseISO(selectedGeneration.startDate);
     const filename = `support-rota-${format(startDate, "yyyy-MM-dd")}`;
 
     if (formatType === 'csv') {
@@ -99,7 +130,7 @@ export default function SupportRotaPage() {
         });
 
         const rows = teamMembersInRota.map(member => {
-            const shiftId = activeGeneration.assignments[member.id];
+            const shiftId = selectedGeneration.assignments[member.id];
             const shift = shiftId ? shiftMap.get(shiftId) : null;
             const row: (string | boolean)[] = [member.name, shift ? shift.name : "Off", adhocNotes[member.id] || ""];
 
@@ -165,12 +196,26 @@ export default function SupportRotaPage() {
           <div>
             <CardTitle>Ad-hoc Support Planning</CardTitle>
             <CardDescription>
-              Assign team members to ad-hoc support duty for each week of the active rota period.
+              Assign team members to ad-hoc support duty for the selected rota period.
             </CardDescription>
+            <div className="pt-4">
+              <Select value={selectedGenerationId || ""} onValueChange={setSelectedGenerationId}>
+                  <SelectTrigger className="w-full sm:w-[280px]">
+                      <SelectValue placeholder="Select a rota period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {sortedHistory.map(gen => (
+                          <SelectItem key={gen.id} value={gen.id}>
+                              {format(parseISO(gen.startDate), 'd MMM')} - {format(parseISO(gen.endDate), 'd MMM yyyy')}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+            </div>
           </div>
            <Dialog open={isExportDialogOpen} onOpenChange={setExportDialogOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" disabled={!activeGeneration}><Download /> Export</Button>
+                <Button variant="outline" disabled={!selectedGeneration}><Download /> Export</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -190,7 +235,7 @@ export default function SupportRotaPage() {
                 <div className="absolute -left-[9999px] top-0">
                     <SupportRotaExportImage 
                         ref={exportImageRef} 
-                        activeGeneration={activeGeneration}
+                        activeGeneration={selectedGeneration}
                         teamMembersInRota={teamMembersInRota}
                         weeks={weeks}
                         adhocStatus={adhocStatus}
@@ -218,7 +263,7 @@ export default function SupportRotaPage() {
                 </TableHeader>
                 <TableBody>
                   {teamMembersInRota.map(member => {
-                    const shiftId = activeGeneration.assignments[member.id];
+                    const shiftId = selectedGeneration.assignments[member.id];
                     const shift = shiftId ? shiftMap.get(shiftId) : null;
                     return (
                       <TableRow key={member.id}>
@@ -277,3 +322,5 @@ export default function SupportRotaPage() {
     </motion.div>
   );
 }
+
+    
