@@ -70,42 +70,66 @@ export const generateNewRotaAssignments = (
 
   if (flexibleMembers.length >= sortedShifts.length) {
     const remainingMembers = [...flexibleMembers];
-
-    // Pass 1: Try to assign members to their ideal next shift or stay on the same shift
     const stillNeedsAssignment: TeamMember[] = [];
+
+    // Pass 1: Try to assign members based on streaks and ideal next shifts
     remainingMembers.forEach(member => {
-        const lastShiftId = shiftStreaks[member.id]?.shiftId;
-        const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-        let assigned = false;
+      const streak = shiftStreaks[member.id];
+      const lastShiftId = streak?.shiftId;
+      const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+      let assigned = false;
 
-        // Priority 1: Try to move to the ideal next shift (+1)
-        const idealNextShift = getNextShift(lastShiftId, sortedShifts);
+      let mustRotate = false;
+      if (lastShift) {
+          const maxStreak = lastShift.isExtreme ? 1 : 2;
+          if (streak.count >= maxStreak) {
+              mustRotate = true;
+          }
+      }
+      
+      const idealNextShift = getNextShift(lastShiftId, sortedShifts);
+
+      // Priority 1: Rotate if streak is maxed out
+      if (mustRotate) {
+          if (isTransitionAllowed(lastShift, idealNextShift) && assignedCounts[idealNextShift.id] < idealNextShift.maxTeam) {
+              assignments[member.id] = idealNextShift.id;
+              assignedCounts[idealNextShift.id]++;
+              assigned = true;
+          }
+      } else {
+        // Priority 2: Try to move to the ideal next shift if not forced to rotate
         if (isTransitionAllowed(lastShift, idealNextShift) && assignedCounts[idealNextShift.id] < idealNextShift.maxTeam) {
-            assignments[member.id] = idealNextShift.id;
-            assignedCounts[idealNextShift.id]++;
-            assigned = true;
+          assignments[member.id] = idealNextShift.id;
+          assignedCounts[idealNextShift.id]++;
+          assigned = true;
         }
+        // Priority 3: If not, try to stay on the same shift if allowed
+        else if (lastShift && assignedCounts[lastShift.id] < lastShift.maxTeam) {
+          assignments[member.id] = lastShift.id;
+          assignedCounts[lastShift.id]++;
+          assigned = true;
+        }
+      }
 
-        // Priority 2: If not possible, try to stay on the same shift (if not extreme and has capacity)
-        if (!assigned && lastShift && !lastShift.isExtreme && assignedCounts[lastShift.id] < lastShift.maxTeam) {
-            assignments[member.id] = lastShift.id;
-            assignedCounts[lastShift.id]++;
-            assigned = true;
-        }
-
-        if (!assigned) {
-            stillNeedsAssignment.push(member);
-        }
+      if (!assigned) {
+        stillNeedsAssignment.push(member);
+      }
     });
 
-    // Pass 2: Assign any remaining members to the first available shift
+    // Pass 2: Assign any remaining members to the first available forward-moving shift
     stillNeedsAssignment.forEach(member => {
-        for (const shift of sortedShifts) {
-            if (assignedCounts[shift.id] < shift.maxTeam) {
-                assignments[member.id] = shift.id;
-                assignedCounts[shift.id]++;
-                break; // Member assigned, move to next member
+        const lastShiftId = shiftStreaks[member.id]?.shiftId;
+        const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
+        let searchStartShift = getNextShift(lastShiftId, sortedShifts);
+
+        for (let i = 0; i < sortedShifts.length; i++) {
+            const targetShift = searchStartShift;
+            if (assignedCounts[targetShift.id] < targetShift.maxTeam && isTransitionAllowed(lastShift, targetShift)) {
+                assignments[member.id] = targetShift.id;
+                assignedCounts[targetShift.id]++;
+                return; // Member assigned, exit loop for this member
             }
+            searchStartShift = getNextShift(searchStartShift.id, sortedShifts); // Move to next shift in sequence
         }
     });
     
