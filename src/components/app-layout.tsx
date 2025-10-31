@@ -245,18 +245,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith("/matrix")}
-                tooltip="Rota Matrix"
-              >
-                <Link href="/matrix">
-                  <ListTree />
-                  <span className="group-data-[collapsible=icon]:hidden">Rota Matrix</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -278,6 +266,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/weekend">
                   <CalendarDays />
                   <span className="group-data-[collapsible=icon]:hidden">Weekend Rota</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/matrix")}
+                tooltip="Rota Matrix"
+              >
+                <Link href="/matrix">
+                  <ListTree />
+                  <span className="group-data-[collapsible=icon]:hidden">Rota Matrix</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
