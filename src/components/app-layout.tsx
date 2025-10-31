@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle, User as UserIcon } from "lucide-react";
+import { LayoutDashboard, Settings, Moon, Sun, LogOut, ListTree, HelpCircle, User as UserIcon, LifeBuoy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "./ui/dropdown-menu";
@@ -254,6 +254,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/matrix">
                   <ListTree />
                   <span className="group-data-[collapsible=icon]:hidden">Rota Matrix</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/support")}
+                tooltip="Support Rota"
+              >
+                <Link href="/support">
+                  <LifeBuoy />
+                  <span className="group-data-[collapsible=icon]:hidden">Support Rota</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
