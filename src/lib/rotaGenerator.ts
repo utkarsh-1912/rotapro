@@ -69,35 +69,41 @@ export const generateNewRotaAssignments = (
   });
 
   if (flexibleMembers.length >= sortedShifts.length) {
-    // New logic for when there are enough or more people than shifts
     flexibleMembers.forEach(member => {
         const lastShiftId = shiftStreaks[member.id]?.shiftId;
         const lastShift = lastShiftId ? shiftMap.get(lastShiftId) : undefined;
-        let idealNextShift = getNextShift(lastShiftId, sortedShifts);
-
         let assigned = false;
-        // Try to assign the ideal next shift or a subsequent one if the ideal is full
-        for (let i = 0; i < sortedShifts.length; i++) {
-            const targetShift = idealNextShift;
-            if (assignedCounts[targetShift.id] < targetShift.maxTeam && isTransitionAllowed(lastShift, targetShift)) {
-                assignments[member.id] = targetShift.id;
-                assignedCounts[targetShift.id]++;
-                assigned = true;
-                break;
-            }
-            // If the ideal shift is full, try the next one in sequence
-            idealNextShift = getNextShift(idealNextShift.id, sortedShifts);
+
+        // Priority 1: Try to move to the ideal next shift
+        const idealNextShift = getNextShift(lastShiftId, sortedShifts);
+        if (isTransitionAllowed(lastShift, idealNextShift) && assignedCounts[idealNextShift.id] < idealNextShift.maxTeam) {
+            assignments[member.id] = idealNextShift.id;
+            assignedCounts[idealNextShift.id]++;
+            assigned = true;
         }
 
+        // Priority 2: If not possible, try to stay on the same shift (if not extreme)
+        if (!assigned && lastShift && !lastShift.isExtreme && assignedCounts[lastShift.id] < lastShift.maxTeam) {
+            assignments[member.id] = lastShift.id;
+            assignedCounts[lastShift.id]++;
+            assigned = true;
+        }
+
+        // Priority 3: Find the next available forward shift
         if (!assigned) {
-            // Fallback: If all forward shifts are full, find any available spot. This shouldn't happen if max capacity is reasonable.
-            const anyAvailableShift = sortedShifts.find(s => assignedCounts[s.id] < s.maxTeam);
-            if (anyAvailableShift) {
-                assignments[member.id] = anyAvailableShift.id;
-                assignedCounts[anyAvailableShift.id]++;
+            let searchShift = idealNextShift;
+            for (let i = 0; i < sortedShifts.length; i++) {
+                if (isTransitionAllowed(lastShift, searchShift) && assignedCounts[searchShift.id] < searchShift.maxTeam) {
+                    assignments[member.id] = searchShift.id;
+                    assignedCounts[searchShift.id]++;
+                    assigned = true;
+                    break;
+                }
+                searchShift = getNextShift(searchShift.id, sortedShifts);
             }
         }
     });
+
   } else {
     // Existing logic for when there are fewer people than shifts
     const mustRotate: TeamMember[] = [];
