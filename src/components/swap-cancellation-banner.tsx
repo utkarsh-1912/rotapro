@@ -6,7 +6,7 @@ import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO } from "date-fns";
 import { Recycle } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { RotaGeneration, Shift, TeamMember } from "@/lib/types";
 
