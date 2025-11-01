@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import type { TeamMember } from "@/lib/types";
-import { Recycle } from "lucide-react";
+import { Recycle, ArrowRightLeft } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
@@ -39,7 +39,7 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
   }
 
   const shiftMap = new Map(shifts.map((s) => [s.id, s]));
-  const { assignments, manualOverrides } = activeGeneration;
+  const { assignments, manualOverrides, manualSwaps } = activeGeneration;
 
   return (
     <TooltipProvider>
@@ -58,7 +58,8 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                     if (!member) return null;
                     const shiftId = assignments[member.id];
                     const shift = shiftId ? shiftMap.get(shiftId) : null;
-                    const isOverridden = manualOverrides?.includes(member.id);
+                    const isManuallyChanged = manualOverrides?.includes(member.id);
+                    const isSwapped = manualSwaps?.some(s => s.memberId1 === member.id || s.memberId2 === member.id);
 
                     return (
                       <TableCell key={member.id} className="text-center p-2 align-top h-24 group">
@@ -73,13 +74,20 @@ export const RotaTable = React.forwardRef<HTMLDivElement>((props, ref) => {
                               }}
                             >
                               {shift.name}
-                               {isOverridden && (
+                               {isManuallyChanged && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Recycle className="h-3 w-3 ml-1.5 inline-block" />
+                                        <span className="ml-1.5 inline-block">
+                                            {isSwapped 
+                                                ? <ArrowRightLeft className="h-3 w-3" />
+                                                : <Recycle className="h-3 w-3" />
+                                            }
+                                        </span>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Shift was manually changed</p>
+                                        <p>
+                                            {isSwapped ? "Shift was manually swapped" : "Shift was manually edited"}
+                                        </p>
                                     </TooltipContent>
                                 </Tooltip>
                               )}
