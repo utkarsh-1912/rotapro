@@ -32,6 +32,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRotaStore, useRotaStoreActions } from "@/lib/store";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
