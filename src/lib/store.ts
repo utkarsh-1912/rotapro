@@ -28,6 +28,7 @@ const getInitialState = (): Omit<AppState, keyof ReturnType<typeof useRotaStoreA
         activeGenerationId: null,
         weekendRotas: [],
         lastWeekendAssigneeIndex: -1,
+        showExportFooter: true,
     }
 }
 
@@ -410,6 +411,10 @@ export const useRotaStore = create<AppState>()(
             weekendRotas: [...otherAssignments, ...updatedAssignments]
         };
       }),
+      
+      toggleShowExportFooter: () => set(state => ({
+        showExportFooter: !state.showExportFooter
+      })),
 
     }),
     {
@@ -461,4 +466,5 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     generateWeekendRota: state.generateWeekendRota,
     deleteWeekendRotaForPeriod: state.deleteWeekendRotaForPeriod,
     swapWeekendAssignments: state.swapWeekendAssignments,
+    toggleShowExportFooter: state.toggleShowExportFooter,
 }));

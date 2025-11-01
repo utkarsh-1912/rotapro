@@ -62,6 +62,7 @@ export interface AppState {
   activeGenerationId: string | null;
   weekendRotas: WeekendRota[];
   lastWeekendAssigneeIndex: number;
+  showExportFooter: boolean;
   addTeamMember: (name: string, fixedShiftId?: string) => void;
   updateTeamMember: (id: string, updates: Partial<Pick<TeamMember, 'name' | 'fixedShiftId'>>) => void;
   deleteTeamMember: (id: string) => void;
@@ -79,6 +80,7 @@ export interface AppState {
   generateWeekendRota: (generationId: string) => void;
   deleteWeekendRotaForPeriod: (generationId: string) => void;
   swapWeekendAssignments: (generationId: string, memberId1: string, memberId2: string) => void;
+  toggleShowExportFooter: () => void;
 }
 
 export type UserProfile = {
