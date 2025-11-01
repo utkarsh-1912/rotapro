@@ -17,7 +17,7 @@ export const RotaExportImage = React.forwardRef<HTMLDivElement, RotaExportImageP
         const { teamMembers } = useRotaStore();
         const startDate = parseISO(activeGeneration.startDate);
         const endDate = parseISO(activeGeneration.endDate);
-        const title = `ROTA Period: ${format(startDate, 'd MMM yyyy')} - ${format(endDate, 'd MMM yyyy')}`;
+        const title = `Rota Period: ${format(startDate, 'd MMM yyyy')} - ${format(endDate, 'd MMM yyyy')}`;
 
         const comments = activeGeneration.comments || {};
         const memberMap = new Map(teamMembers.map(m => [m.id, m.name]));
@@ -25,7 +25,7 @@ export const RotaExportImage = React.forwardRef<HTMLDivElement, RotaExportImageP
 
         return (
             <div ref={ref} className="px-8 py-4 bg-white text-black font-body w-[1200px]">
-                <h2 className="text-2xl font-bold text-center mb-6">{title}</h2>
+                <h2 className="text-xl text-center mb-4">{title}</h2>
                 <RotaTable />
                 {commentEntries.length > 0 && (
                     <div className="mt-4">
