@@ -277,6 +277,7 @@ export const useRotaStore = create<AppState>()(
                 teamMembersAtGeneration: [...teamMembers],
                 manualOverrides: [],
                 manualSwaps: [],
+                manualWeekendSwaps: [],
                 comments: {},
             };
             
@@ -390,7 +391,7 @@ export const useRotaStore = create<AppState>()(
         return { weekendRotas: remainingRotas };
       }),
       
-      swapWeekendAssignments: (generationId: string, memberId1: string, memberId2: string) => set((state) => {
+      swapWeekendAssignments: (generationId, memberId1, memberId2) => set((state) => {
         const assignmentsForGen = state.weekendRotas.filter(r => r.generationId === generationId);
         const otherAssignments = state.weekendRotas.filter(r => r.generationId !== generationId);
 
@@ -407,11 +408,38 @@ export const useRotaStore = create<AppState>()(
             return assignment;
         });
 
+        // Record the swap in the generation history
+        const newHistory = state.generationHistory.map(gen => {
+            if (gen.id === generationId) {
+                 const newWeekendSwaps = [...(gen.manualWeekendSwaps || [])];
+                 newWeekendSwaps.push({ memberId1, memberId2, neutralized: false });
+                 return { ...gen, manualWeekendSwaps: newWeekendSwaps };
+            }
+            return gen;
+        });
+
         return {
-            weekendRotas: [...otherAssignments, ...updatedAssignments]
+            weekendRotas: [...otherAssignments, ...updatedAssignments],
+            generationHistory: newHistory
         };
       }),
       
+      toggleWeekendSwapNeutralization: (generationId, memberId1, memberId2) => set(state => ({
+        generationHistory: state.generationHistory.map(gen => {
+          if (gen.id === generationId) {
+            return {
+              ...gen,
+              manualWeekendSwaps: (gen.manualWeekendSwaps || []).map(swap => 
+                (swap.memberId1 === memberId1 && swap.memberId2 === memberId2) || (swap.memberId1 === memberId2 && swap.memberId2 === memberId1)
+                  ? { ...swap, neutralized: !swap.neutralized }
+                  : swap
+              )
+            }
+          }
+          return gen;
+        })
+      })),
+
       toggleShowExportFooter: () => set(state => ({
         showExportFooter: !state.showExportFooter
       })),
@@ -466,5 +494,6 @@ export const useRotaStoreActions = () => useRotaStore(state => ({
     generateWeekendRota: state.generateWeekendRota,
     deleteWeekendRotaForPeriod: state.deleteWeekendRotaForPeriod,
     swapWeekendAssignments: state.swapWeekendAssignments,
+    toggleWeekendSwapNeutralization: state.toggleWeekendSwapNeutralization,
     toggleShowExportFooter: state.toggleShowExportFooter,
 }));

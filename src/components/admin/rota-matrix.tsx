@@ -73,7 +73,7 @@ function getWeeklyBreakdown(gen: RotaGeneration) {
 
 export function RotaMatrix() {
     const { generationHistory, shifts, weekendRotas, activeGenerationId } = useRotaStore();
-    const { swapShifts, toggleSwapNeutralization } = useRotaStoreActions();
+    const { swapShifts, toggleSwapNeutralization, swapWeekendAssignments, toggleWeekendSwapNeutralization } = useRotaStoreActions();
     const [currentPage, setCurrentPage] = React.useState(0);
     const { toast } = useToast();
     const itemsPerPage = 5;
@@ -122,6 +122,26 @@ export function RotaMatrix() {
             .filter((item): item is NonNullable<typeof item> => item !== null),
         [sortedHistory, shiftMap, memberMap]
     );
+    
+    const weekendSwapHistory = React.useMemo(() =>
+        sortedHistory
+            .map(gen => {
+                if (!gen.manualWeekendSwaps || gen.manualWeekendSwaps.length === 0) return null;
+                const swap = gen.manualWeekendSwaps[0];
+                const member1 = memberMap.get(swap.memberId1);
+                const member2 = memberMap.get(swap.memberId2);
+                if (!member1 || !member2) return null;
+                return {
+                    gen,
+                    swap,
+                    members: `${member1.name} & ${member2.name}`,
+                    memberId1: member1.id,
+                    memberId2: member2.id,
+                };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null),
+    [sortedHistory, memberMap]);
+
 
     const supportMatrixHeaders = React.useMemo(() => {
         const headers: {label: string, genId: string, weekIndex: number, isLastInGroup: boolean}[] = [];
@@ -718,10 +738,77 @@ export function RotaMatrix() {
                     </CardContent>
                 </Card>
             )}
+
+            {weekendSwapHistory.length > 0 && (
+                <Card className="mt-6">
+                    <CardHeader>
+                        <CardTitle>Manual Weekend Swap History</CardTitle>
+                        <CardDescription>
+                            A log of all manual weekend duty swaps that have occurred.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Rota Period</TableHead>
+                                        <TableHead>Members Involved</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {weekendSwapHistory.map(({ gen, swap, members, memberId1, memberId2 }) => {
+                                        const startDate = parseISO(gen.startDate);
+                                        const endDate = parseISO(gen.endDate);
+
+                                        const handleWeekendSwapAction = () => {
+                                            if (!activeGeneration) return;
+                                            swapWeekendAssignments(activeGeneration.id, memberId1, memberId2);
+                                            toggleWeekendSwapNeutralization(gen.id, memberId1, memberId2);
+                                            
+                                            const actionText = swap.neutralized ? "reset" : "canceled out";
+                                            toast({
+                                                title: `Weekend Swap ${actionText}`,
+                                                description: `The manual weekend swap between ${members} has been ${actionText}.`,
+                                            });
+                                        };
+
+                                        return (
+                                            <TableRow key={gen.id} className={cn(swap.neutralized && "text-muted-foreground line-through")}>
+                                                <TableCell className="font-medium whitespace-nowrap">
+                                                    {format(startDate, 'd MMM')} - {format(endDate, 'd MMM yyyy')}
+                                                </TableCell>
+                                                <TableCell>{members}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div>
+                                                                <Button 
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={handleWeekendSwapAction}
+                                                                    className={cn(swap.neutralized && "text-destructive hover:text-destructive")}
+                                                                >
+                                                                    {swap.neutralized ? <Undo2 /> : <Recycle />}
+                                                                    <span className="sr-only">{swap.neutralized ? "Reset Weekend Swap" : "Cancel Out Weekend Swap"}</span>
+                                                                </Button>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{swap.neutralized ? "Reset this canceled weekend swap" : "Cancel out this weekend swap"}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </TooltipProvider>
     )
 }
-
-    
-
-    

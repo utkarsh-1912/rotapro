@@ -29,6 +29,12 @@ export type ManualSwap = {
     neutralized?: boolean; // To track if a swap has been canceled out
 }
 
+export type ManualWeekendSwap = {
+    memberId1: string;
+    memberId2: string;
+    neutralized?: boolean;
+}
+
 // Adhoc status for a rota generation
 // Member ID -> Week Index -> isSelected
 export type AdhocAssignments = Record<string, Record<number, boolean>>;
@@ -42,6 +48,7 @@ export interface RotaGeneration {
   teamMembersAtGeneration?: TeamMember[]; // Snapshot of team members
   manualOverrides?: string[]; // Array of member IDs that have been manually changed
   manualSwaps?: ManualSwap[]; // Array of swaps that occurred
+  manualWeekendSwaps?: ManualWeekendSwap[]; // Array of weekend swaps that occurred
   comments?: Record<string, string>; // Comments for a member's assignment
   adhoc?: AdhocAssignments; // Ad-hoc support assignments
 }
@@ -80,6 +87,7 @@ export interface AppState {
   generateWeekendRota: (generationId: string) => void;
   deleteWeekendRotaForPeriod: (generationId: string) => void;
   swapWeekendAssignments: (generationId: string, memberId1: string, memberId2: string) => void;
+  toggleWeekendSwapNeutralization: (generationId: string, memberId1: string, memberId2: string) => void;
   toggleShowExportFooter: () => void;
 }
 
