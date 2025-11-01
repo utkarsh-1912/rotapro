@@ -27,7 +27,7 @@ export const SupportRotaExportImage = React.forwardRef<HTMLDivElement, SupportRo
 
         return (
             <div ref={ref} className="px-8 py-4 bg-white text-black font-body w-[1200px]">
-                <h2 className="text-lg text-center font-normal">{title}</h2>
+                <h2 className="text-lg text-center font-normal mb-4">{title}</h2>
                 <div className="border rounded-lg mt-4">
                     <Table>
                         <TableHeader>

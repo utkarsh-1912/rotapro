@@ -266,7 +266,7 @@ export default function SupportRotaPage() {
             </Dialog>
            </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-6">
             <div className="overflow-x-auto rounded-lg border">
               <Table>
