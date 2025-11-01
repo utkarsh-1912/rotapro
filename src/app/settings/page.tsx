@@ -347,15 +347,15 @@ function PasswordForm() {
   );
 }
 
-function ExportSettingsForm() {
+function ApplicationSettings() {
   const { showExportFooter } = useRotaStore();
   const { toggleShowExportFooter } = useRotaStoreActions();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Export Settings</CardTitle>
-        <CardDescription>Customize the output of your exported files.</CardDescription>
+        <CardTitle>Application Settings</CardTitle>
+        <CardDescription>Control global application behavior and preferences.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between space-x-2">
@@ -390,7 +390,7 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account and application settings.</p>
         </div>
-        <ExportSettingsForm />
+        <ApplicationSettings />
         <Separator />
         <h2 className="text-2xl font-bold">Account</h2>
         <ProfileForm />
