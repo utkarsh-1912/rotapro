@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle } from "lucide-react";
 
 export default function AboutPage() {
   return (
@@ -15,17 +15,44 @@ export default function AboutPage() {
           <CardHeader>
             <CardTitle className="text-3xl font-extrabold tracking-tight">About RotaPro</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 text-muted-foreground">
+          <CardContent className="space-y-8 text-muted-foreground">
             <p className="text-lg">
-              RotaPro is a powerful, AI-driven application designed to simplify the complexities of team scheduling and rota management. Our mission is to provide an intuitive, efficient, and fair system for managers and team members alike.
+              RotaPro is your intelligent partner for seamless team scheduling. We transform the complex, time-consuming task of creating and managing rotas into a streamlined, automated process. Our mission is to empower managers with tools that ensure fairness, efficiency, and clarity, allowing teams to focus on what they do best.
             </p>
-            <p>
-              Built with modern technology, RotaPro leverages intelligent algorithms to automatically generate balanced schedules, taking into account shift constraints, team member availability, and fairness rules. We believe that proper scheduling is the backbone of a productive and happy team, and we're here to make that process seamless.
-            </p>
-            <h3 className="text-xl font-semibold text-foreground pt-4">Our Vision</h3>
-            <p>
-              We envision a world where scheduling is no longer a time-consuming chore but a strategic tool that enhances operational efficiency and employee satisfaction. By automating the tedious aspects of creating and managing rotas, we empower businesses to focus on what truly matters: their people and their goals.
-            </p>
+            
+            <section>
+              <h3 className="text-xl font-semibold text-foreground mb-4">Core Features</h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-primary mt-1 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-foreground">Intelligent Rota Generation</h4>
+                    <p>Leverage our smart algorithm to automatically generate fair and balanced schedules. It accounts for shift constraints, staffing requirements, and historical data to prevent burnout and ensure equitable assignments.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-primary mt-1 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-foreground">Centralized Configuration</h4>
+                    <p>Manage every aspect of your schedule from a single Config Panel. Define custom shifts with specific timings and rules, and easily manage your team members and their fixed assignments.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-primary mt-1 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-foreground">Flexible Scheduling Tools</h4>
+                    <p>Adapt to changing needs with tools for ad-hoc support planning, automated weekend rotas, and a comprehensive Rota Matrix for analyzing historical assignment data to maintain long-term fairness.</p>
+                  </div>
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-xl font-semibold text-foreground pt-4">Our Vision</h3>
+              <p>
+                We envision a world where scheduling is no longer a chore but a strategic tool that boosts operational efficiency and employee morale. By automating the tedious aspects of rota management, RotaPro gives you back your most valuable asset: time.
+              </p>
+            </section>
           </CardContent>
         </Card>
       </div>
