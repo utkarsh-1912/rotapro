@@ -20,7 +20,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="text-xl font-semibold text-foreground">1. Introduction</h2>
-              <p>Welcome to RotaPro. This application is a demonstration project provided "as is" for evaluation and showcase purposes only. By accessing or using our service, you agree to be bound by these Terms of Service and Privacy Policy. If you disagree with any part of the terms, you may not access the service.</p>
+              <p>Welcome to RotaPro by FIXpert. This application is a demonstration project provided "as is" for evaluation and showcase purposes only. By accessing or using our service, you agree to be bound by these Terms of Service and Privacy Policy. If you disagree with any part of the terms, you may not access the service.</p>
             </section>
             
             <section>

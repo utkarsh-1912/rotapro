@@ -17,7 +17,7 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-8 text-muted-foreground">
             <p className="text-lg">
-              RotaPro is your intelligent partner for seamless team scheduling. We transform the complex, time-consuming task of creating and managing rotas into a streamlined, automated process. Our mission is to empower managers with tools that ensure fairness, efficiency, and clarity, allowing teams to focus on what they do best.
+              RotaPro by FIXpert is your intelligent partner for seamless team scheduling. We transform the complex, time-consuming task of creating and managing rotas into a streamlined, automated process. Our mission is to empower managers with tools that ensure fairness, efficiency, and clarity, allowing teams to focus on what they do best.
             </p>
             
             <section>
